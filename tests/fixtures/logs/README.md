@@ -5,6 +5,26 @@ a 201-variable / 133-constraint binary set-partitioning instance with known
 optimal objective 7615. The instance is small enough that every free
 community-tier solver can handle it in under a second.
 
+## Currently-committed versions
+
+Each fixture log was produced by the solver version shown below — the
+parsers in `src/solvers/*` are regression-tested against these exact
+outputs, so these are the canonical "known-good" formats we support.
+
+| Solver   | Version in fixture | Notes |
+|----------|--------------------|-------|
+| SCIP     | 11.0.0 (GitHash `4f4f68fb97-dirty`) | Generated via the `scip` CLI so the banner + solver git hash are captured |
+| Gurobi   | 12.0.3             | Via `gurobipy` restricted license |
+| Xpress   | 9.8.1 Community    | Via the `xpress` Python package |
+| HiGHS    | 1.14.0 (git `7df0786`) | Via `highspy` |
+| COPT     | 8.0.3              | Via `coptpy` free tier |
+| CPLEX    | 22.1.2.0           | Via `cplex` community edition |
+
+Parsers are expected to stay compatible with **at least one minor version
+back and one forward** from these without code changes. Breaking format
+changes in a solver should appear as a new fixture alongside the old one,
+not a replacement, so we keep parsing both.
+
 ## How these were generated
 
 ```bash
