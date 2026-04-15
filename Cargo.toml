@@ -1,0 +1,30 @@
+[package]
+name = "orlog"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+description = "Parse MIP/LP solver log files (Gurobi, Xpress, SCIP, HiGHS, COPT, …) into a unified, serde-serializable schema."
+repository = "https://github.com/mghannam/orlog"
+readme = "README.md"
+keywords = ["mip", "optimization", "solver", "parser", "log"]
+categories = ["parser-implementations", "science"]
+exclude = [
+    ".github/",
+]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+regex = "1"
+thiserror = "2"
+flate2 = "1"
+nom = "7"
+clap = { version = "4", features = ["derive"] }
+
+[[bin]]
+name = "orlog"
+path = "src/bin/orlog.rs"
+
+[dev-dependencies]
+insta = { version = "1", features = ["json"] }

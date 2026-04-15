@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Free solvers available via pip / apt — all have free tiers for small instances
+      - name: Install solvers
+        run: |
+          pip install highspy       # HiGHS (MIT, fully free)
+          pip install pyscipopt     # SCIP (Apache 2.0, fully free)
+          pip install gurobipy      # Gurobi (restricted license: ≤2000 vars, no key)
+          pip install coptpy        # COPT (free tier: ≤2000 vars, no key)
+          pip install xpress        # Xpress (community license: ≤5000 vars, no key)
+          pip install cplex         # CPLEX (community: ≤1000 vars, no key)
+
+          # HiGHS CLI
+          which highs || true
+
+          # CBC via apt
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq coinor-cbc || true
+
+      - name: Generate solver logs (p0201)
+        run: python3 tests/generate_logs.py
+
+      - name: Show generated logs
+        run: |
+          echo "Generated logs:"
+          ls -lh tests/fixtures/logs/
+          for f in tests/fixtures/logs/*.log; do
+            echo "=== $(basename $f) ==="
+            head -3 "$f"
+            echo "..."
+            wc -l "$f"
+          done
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solver-logs
+          path: tests/fixtures/logs/
