@@ -195,6 +195,32 @@ fn generated_mosek() {
     }
 }
 
+/// Every generated log must satisfy the documented Core (`verify_common`)
+/// tier. A failure here means a parser isn't populating fields that the
+/// schema promises as reliably cross-solver — file as a parser bug.
+#[test]
+fn generated_all_pass_verify_common() {
+    let dir = Path::new(LOGS_DIR);
+    if !dir.exists() { return; }
+    let mut failures: Vec<String> = Vec::new();
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        if path.extension().map(|x| x == "log").unwrap_or(false) {
+            let text = std::fs::read_to_string(&path).unwrap();
+            let Ok(log) = autodetect(&text) else { continue };
+            if let Err(missing) = log.verify_common() {
+                let name = path.file_name().unwrap().to_string_lossy();
+                failures.push(format!("{name}: missing {missing:?}"));
+            }
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "Core-tier gaps:\n  {}",
+        failures.join("\n  "),
+    );
+}
+
 /// Meta-test: at least one solver log should exist.
 /// Prevents silent "all skipped" in a misconfigured CI.
 #[test]

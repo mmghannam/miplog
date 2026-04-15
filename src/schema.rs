@@ -3,6 +3,30 @@
 //! Fields are `Option<_>` because no single solver emits everything; parsers
 //! fill in what they observe and leave the rest `None`. Solver-specific data
 //! that doesn't fit the common vocabulary goes under [`SolverLog::extras`].
+//!
+//! # Two tiers of fields
+//!
+//! The schema is one struct but the fields fall into two **tiers** by
+//! reliability:
+//!
+//! 1. **Core (`verify_common`)** — fields we guarantee are populated when the
+//!    solver log contains the corresponding information. Missing a Core field
+//!    on a well-formed log is a parser bug. Downstream tooling can build
+//!    cross-solver reports on these without defensive coding.
+//!    - `solver` (trivially)
+//!    - `termination.status` (non-`Unknown` for a complete run)
+//!    - `timing.wall_seconds`
+//!    - `bounds.primal` + `bounds.dual` when [`Status::Optimal`]
+//!
+//! 2. **Extended (best-effort)** — everything else. Parsers populate these
+//!    when the log makes it easy, skip them when it doesn't. Missing an
+//!    Extended field is not a bug. Examples: `version`, `solver_git_hash`,
+//!    `cuts`, pre-presolve dims, root-LP times, simplex iterations.
+//!
+//! Promotion from Extended to Core happens with a minor version bump when
+//! all active parsers reliably populate a field.
+//!
+//! [`Status::Optimal`]: Status::Optimal
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -213,6 +237,34 @@ impl SolverLog {
             cuts: BTreeMap::new(),
             progress: ProgressTable::default(),
             extras: None,
+        }
+    }
+
+    /// Check that the **Core** fields (see module-level docs) are populated.
+    /// Returns the list of missing field names, or `Ok(())` if all present.
+    /// This is the strict tier — a well-formed log that fails this check
+    /// indicates a parser gap worth filing.
+    pub fn verify_common(&self) -> Result<(), Vec<&'static str>> {
+        let mut missing = Vec::new();
+        if self.termination.status == Status::Unknown {
+            missing.push("termination.status");
+        }
+        if self.timing.wall_seconds.is_none() {
+            missing.push("timing.wall_seconds");
+        }
+        // For Optimal runs, both bounds are expected (solver proved them equal).
+        if self.termination.status == Status::Optimal {
+            if self.bounds.primal.is_none() {
+                missing.push("bounds.primal");
+            }
+            if self.bounds.dual.is_none() {
+                missing.push("bounds.dual");
+            }
+        }
+        if missing.is_empty() {
+            Ok(())
+        } else {
+            Err(missing)
         }
     }
 }
