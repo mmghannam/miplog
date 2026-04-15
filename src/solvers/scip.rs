@@ -98,6 +98,13 @@ impl LogParser for ScipParser {
         // Progress table.
         log.progress = parse_progress(text);
 
+        // Extended bounds / tree fields.
+        parse_root_and_solution(text, &mut log);
+        parse_tree_details(text, &mut log);
+
+        // Rich solver-specific data under `other_data`.
+        populate_other_data(text, &mut log);
+
         Ok(log)
     }
 }
@@ -373,4 +380,313 @@ fn re_presolved_dims() -> &'static Regex {
     R.get_or_init(|| {
         Regex::new(r"presolved problem has (\d+) variables[^\n]* and (\d+) constraints").unwrap()
     })
+}
+
+/* ---------- extended fields (Root Node / Solution / B&B Tree) ---------- */
+
+fn parse_root_and_solution(text: &str, log: &mut SolverLog) {
+    // "Root Node" section:
+    //   First LP value   : +7.11500000000000e+03
+    //   First LP Iters   :        136
+    //   First LP Time    :       0.00
+    //   Final Dual Bound : +7.37159226382289e+03
+    //   Final Root Iters :        868
+    //   Root LP Estimate : +7.70514845437900e+03
+    if let Some(c) = re_kv_f("Final Dual Bound", true).captures(text) {
+        log.bounds.root_dual = parse_opt_f64(&c[1]);
+    }
+
+    // "Solution" section:
+    //   First Solution   : +1.20850000000000e+04   (in run 1, after 1 nodes, 0.01 seconds, depth 26, found by <locks>)
+    let first_sol_re = Regex::new(
+        r"First Solution\s*:\s*(\+?-?[\d.eE+\-]+|-)\s*\(in run \d+, after \d+ nodes?, ([\d.]+) seconds",
+    )
+    .unwrap();
+    if let Some(c) = first_sol_re.captures(text) {
+        log.bounds.first_primal = parse_opt_f64(&c[1]);
+        log.bounds.first_primal_time_seconds = c[2].parse().ok();
+    }
+
+    // Primal-dual integral is in the "Integrals" section:
+    //   primal-dual      :       5.29      12.61
+    // (first column is total, second is avg %)
+    let pdi_re = Regex::new(r"(?m)^\s*primal-dual\s*:\s*([\d.eE+\-]+)").unwrap();
+    if let Some(c) = pdi_re.captures(text) {
+        log.bounds.primal_dual_integral = c[1].parse().ok();
+    }
+}
+
+fn parse_tree_details(text: &str, log: &mut SolverLog) {
+    // B&B Tree section contains a multi-line block:
+    //   number of runs   :          1
+    //   nodes            :         29 (15 internal, 14 leaves)
+    //   ...
+    //   max depth        :          7
+    if let Some(c) = Regex::new(r"number of runs\s*:\s*(\d+)").unwrap().captures(text) {
+        log.tree.restarts = c[1].parse().ok();
+    }
+    if let Some(c) = Regex::new(r"(?m)^\s*max depth\s*:\s*(\d+)").unwrap().captures(text) {
+        log.tree.max_depth = c[1].parse().ok();
+    }
+}
+
+/// Regex for "key : <float>" style SCIP summary rows. When `allow_plus_sign`
+/// is true, the capture can start with `+` (the SCIP convention for positive
+/// numbers in bound reports).
+fn re_kv_f(key: &str, allow_plus_sign: bool) -> Regex {
+    let val = if allow_plus_sign {
+        r"(\+?-?[\d.eE+\-]+|-)"
+    } else {
+        r"([\d.eE+\-]+)"
+    };
+    Regex::new(&format!(r"{}\s*:\s*{}", regex::escape(key), val)).unwrap()
+}
+
+/* ---------- rich solver-specific data under `other_data` ---------- */
+
+fn populate_other_data(text: &str, log: &mut SolverLog) {
+    if let Some(v) = parse_root_node_block(text) {
+        log.other_data.push(NamedValue::new("scip.root_node", v));
+    }
+    if let Some(v) = parse_tree_block(text) {
+        log.other_data.push(NamedValue::new("scip.tree", v));
+    }
+    if let Some(v) = parse_solution_attribution(text) {
+        log.other_data.push(NamedValue::new("scip.solution_attribution", v));
+    }
+    if let Some(v) = parse_named_table(text, "Primal Heuristics", &["exec_time", "setup_time", "calls", "found", "best"]) {
+        log.other_data.push(NamedValue::new("scip.heuristics", v));
+    }
+    if let Some(v) = parse_named_table(
+        text,
+        "Separators",
+        &["exec_time", "setup_time", "calls", "root_calls", "cutoffs", "dom_reds", "found_cuts", "via_pool_add", "direct_add", "applied", "via_pool_app", "direct_app", "conss"],
+    ) {
+        log.other_data.push(NamedValue::new("scip.separators", v));
+    }
+    if let Some(v) = parse_named_table(
+        text,
+        "Branching Rules",
+        &["exec_time", "setup_time", "branch_lp", "branch_ext", "branch_ps", "cutoffs", "dom_reds", "cuts", "conss", "children"],
+    ) {
+        log.other_data.push(NamedValue::new("scip.branching_rules", v));
+    }
+    if let Some(v) = parse_named_table(
+        text,
+        "LP",
+        &["time", "calls", "iterations", "iter_per_call", "iter_per_sec"],
+    ) {
+        log.other_data.push(NamedValue::new("scip.lp_breakdown", v));
+    }
+    if let Some(v) = parse_conflict_analysis(text) {
+        log.other_data.push(NamedValue::new("scip.conflict_analysis", v));
+    }
+    if let Some(v) = parse_constraints_by_type(text) {
+        log.other_data.push(NamedValue::new("scip.constraints_by_type", v));
+    }
+    if let Some(v) = parse_integrals(text) {
+        log.other_data.push(NamedValue::new("scip.integrals", v));
+    }
+}
+
+fn parse_root_node_block(text: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let hdr = R.get_or_init(|| Regex::new(r"(?m)^Root Node\s*:").unwrap());
+    let m = hdr.find(text)?;
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(10) {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let c0 = line.chars().next().unwrap_or(' ');
+        if !c0.is_whitespace() {
+            break;
+        }
+        let row_re = Regex::new(r"^\s+([A-Za-z][A-Za-z ]+?)\s*:\s+(\S+)").unwrap();
+        if let Some(c) = row_re.captures(line) {
+            let k = c[1].trim().to_lowercase().replace(' ', "_");
+            obj.insert(k, parse_json_scalar(&c[2]));
+        }
+    }
+    if obj.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(obj))
+    }
+}
+
+fn parse_tree_block(text: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let hdr = R.get_or_init(|| Regex::new(r"(?m)^B&B Tree\s*:").unwrap());
+    let m = hdr.find(text)?;
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(20) {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let c0 = line.chars().next().unwrap_or(' ');
+        if !c0.is_whitespace() {
+            break;
+        }
+        // Format: "  name    :   value [extra]"
+        let row_re = Regex::new(r"^\s+([A-Za-z][A-Za-z. ]+?)\s*:\s+(\S.*)$").unwrap();
+        if let Some(c) = row_re.captures(line) {
+            let k = c[1].trim().to_lowercase().replace([' ', '.'], "_");
+            let raw = c[2].trim();
+            // Extract leading number; stash rest as additional info.
+            let first = raw.split_whitespace().next().unwrap_or(raw);
+            obj.insert(k, parse_json_scalar(first));
+        }
+    }
+    if obj.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(obj))
+    }
+}
+
+/// Extract "First Solution" / "Primal Bound" attribution from the Solution section:
+///   First Solution  : +1.20850000000000e+04   (in run 1, after 1 nodes, 0.01 seconds, depth 26, found by <locks>)
+///   Primal Bound    : +7.61500000000000e+03   (in run 1, after 28 nodes, 0.43 seconds, depth 6, found by <relaxation>)
+fn parse_solution_attribution(text: &str) -> Option<serde_json::Value> {
+    let mut obj = serde_json::Map::new();
+    let attr_re = Regex::new(
+        r"\s*:\s*\+?-?[\d.eE+\-]+\s*\(in run (\d+), after (\d+) nodes?, ([\d.]+) seconds, depth (\d+), found by <([^>]+)>\)",
+    )
+    .unwrap();
+    for (kind, label) in [("First Solution", "first"), ("Primal Bound", "best")] {
+        let pat = format!(r"{}{}", regex::escape(kind), attr_re.as_str());
+        if let Ok(re) = Regex::new(&pat) {
+            if let Some(c) = re.captures(text) {
+                let mut inner = serde_json::Map::new();
+                inner.insert("run".into(), parse_json_scalar(&c[1]));
+                inner.insert("nodes".into(), parse_json_scalar(&c[2]));
+                inner.insert("time_seconds".into(), parse_json_scalar(&c[3]));
+                inner.insert("depth".into(), parse_json_scalar(&c[4]));
+                inner.insert("heuristic".into(), serde_json::Value::String(c[5].to_string()));
+                obj.insert(label.into(), serde_json::Value::Object(inner));
+            }
+        }
+    }
+    if obj.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(obj))
+    }
+}
+
+/// Parse a SCIP-style named-row table (e.g. "Primal Heuristics", "Separators",
+/// "Branching Rules", "LP"). Returns a list of `{name, ...column-keyed-values}`.
+/// Skips sub-rows starting with `>` (they roll up into the parent).
+fn parse_named_table(text: &str, section: &str, columns: &[&str]) -> Option<serde_json::Value> {
+    let hdr_re = Regex::new(&format!(r"(?m)^{}\s*:", regex::escape(section))).unwrap();
+    let m = hdr_re.find(text)?;
+    let row_re = Regex::new(r"^\s+([A-Za-z][A-Za-z0-9_ /()>.-]*?)\s*:\s+(.*)$").unwrap();
+    let mut rows: Vec<serde_json::Value> = Vec::new();
+    for line in text[m.end()..].lines().skip(1) {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let c0 = line.chars().next().unwrap_or(' ');
+        if !c0.is_whitespace() {
+            break;
+        }
+        if line.trim_start().starts_with('>') {
+            continue;
+        }
+        let Some(c) = row_re.captures(line) else {
+            continue;
+        };
+        let name = c[1].trim().to_string();
+        if name.is_empty() {
+            continue;
+        }
+        let tokens: Vec<&str> = c[2].split_whitespace().collect();
+        let mut obj = serde_json::Map::new();
+        obj.insert("name".into(), serde_json::Value::String(name));
+        for (col, tok) in columns.iter().zip(tokens.iter()) {
+            obj.insert((*col).into(), parse_json_scalar(tok));
+        }
+        rows.push(serde_json::Value::Object(obj));
+    }
+    if rows.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Array(rows))
+    }
+}
+
+fn parse_conflict_analysis(text: &str) -> Option<serde_json::Value> {
+    // "Conflict Analysis  :       Time      Calls    Success    DomReds  Conflicts   Literals ..."
+    parse_named_table(
+        text,
+        "Conflict Analysis",
+        &["time", "calls", "success", "dom_reds", "conflicts", "literals"],
+    )
+}
+
+fn parse_constraints_by_type(text: &str) -> Option<serde_json::Value> {
+    // Lines right after the "presolved problem has" line:
+    //   "     81 constraints of type <knapsack>"
+    //   "     26 constraints of type <setppc>"
+    let re = Regex::new(r"(?m)^\s*(\d+) constraints? of type <([^>]+)>").unwrap();
+    let mut obj = serde_json::Map::new();
+    for cap in re.captures_iter(text) {
+        let n: u64 = cap[1].parse().ok()?;
+        let name = cap[2].to_string();
+        obj.insert(name, serde_json::Value::from(n));
+    }
+    if obj.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(obj))
+    }
+}
+
+fn parse_integrals(text: &str) -> Option<serde_json::Value> {
+    // "Integrals          :      Total       Avg%"
+    //   "primal-dual      :       5.29      12.61"
+    //   "primal-ref       :          -          - (not evaluated)"
+    //   "dual-ref         :          -          - (not evaluated)"
+    static R: OnceLock<Regex> = OnceLock::new();
+    let hdr = R.get_or_init(|| Regex::new(r"(?m)^Integrals\s*:").unwrap());
+    let m = hdr.find(text)?;
+    let row_re = Regex::new(r"^\s+([a-z-]+)\s*:\s+(\S+)\s+(\S+)").unwrap();
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(5) {
+        if line.trim().is_empty() {
+            break;
+        }
+        let c0 = line.chars().next().unwrap_or(' ');
+        if !c0.is_whitespace() {
+            break;
+        }
+        if let Some(c) = row_re.captures(line) {
+            let mut inner = serde_json::Map::new();
+            inner.insert("total".into(), parse_json_scalar(&c[2]));
+            inner.insert("avg_pct".into(), parse_json_scalar(&c[3]));
+            obj.insert(c[1].replace('-', "_"), serde_json::Value::Object(inner));
+        }
+    }
+    if obj.is_empty() {
+        None
+    } else {
+        Some(serde_json::Value::Object(obj))
+    }
+}
+
+fn parse_json_scalar(tok: &str) -> serde_json::Value {
+    let s = tok.trim_matches(|c: char| c == ',' || c == '%');
+    if s == "-" || s.is_empty() {
+        return serde_json::Value::Null;
+    }
+    if let Ok(n) = s.parse::<i64>() {
+        return serde_json::Value::from(n);
+    }
+    if let Ok(n) = s.trim_start_matches('+').parse::<f64>() {
+        if let Some(n) = serde_json::Number::from_f64(n) {
+            return serde_json::Value::Number(n);
+        }
+    }
+    serde_json::Value::String(tok.to_string())
 }

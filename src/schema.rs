@@ -114,9 +114,33 @@ pub struct SolverLog {
     #[serde(skip_serializing_if = "ProgressTable::is_empty", default)]
     pub progress: ProgressTable,
 
-    /// Anything the unified schema doesn't cover — preserved verbatim as JSON.
-    #[serde(skip_serializing_if = "Option::is_none", default)]
-    pub extras: Option<serde_json::Value>,
+    /// Everything the unified schema doesn't cover. Each entry is a
+    /// solver-specific or solver-specific-but-common name paired with an
+    /// arbitrary JSON value. Stable names (e.g. `"scip.heuristics"`,
+    /// `"scip.root_node"`) let downstream tooling pattern-match without
+    /// promising cross-solver compatibility.
+    ///
+    /// Text format (`Display` / `from_text`) skips this field — use JSON for
+    /// full fidelity.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub other_data: Vec<NamedValue>,
+}
+
+/// A named, freeform-value entry. Used in [`SolverLog::other_data`] as the
+/// escape hatch for solver-specific data that doesn't fit the common schema.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NamedValue {
+    pub name: String,
+    pub value: serde_json::Value,
+}
+
+impl NamedValue {
+    pub fn new(name: impl Into<String>, value: impl Into<serde_json::Value>) -> Self {
+        Self {
+            name: name.into(),
+            value: value.into(),
+        }
+    }
 }
 
 /// Columnar store for B&B progress rows. Maintains an invariant: every
@@ -236,7 +260,7 @@ impl SolverLog {
             presolve: PresolveStats::default(),
             cuts: BTreeMap::new(),
             progress: ProgressTable::default(),
-            extras: None,
+            other_data: Vec::new(),
         }
     }
 
@@ -336,6 +360,17 @@ pub struct Bounds {
     /// Use [`Bounds::effective_gap`] to get a value derived from primal/dual
     /// when the solver didn't print one directly.
     pub gap: Option<f64>,
+    /// Dual bound after the root LP (before branching). Equivalent to the
+    /// first-LP objective on a minimization problem. Interesting quality
+    /// signal independent of the final dual bound.
+    pub root_dual: Option<f64>,
+    /// Primal value of the first feasible solution, and when it was found.
+    pub first_primal: Option<f64>,
+    pub first_primal_time_seconds: Option<f64>,
+    /// Primal-dual integral at termination. Rewards solvers that close the
+    /// gap early even if they take equal total time; a direct benchmarking
+    /// metric. Gurobi 11+ and SCIP 10+ report it natively.
+    pub primal_dual_integral: Option<f64>,
 }
 
 impl Bounds {
@@ -358,6 +393,11 @@ pub struct TreeStats {
     pub nodes_explored: Option<u64>,
     pub simplex_iterations: Option<u64>,
     pub solutions_found: Option<u64>,
+    /// Maximum depth reached in the B&B tree.
+    pub max_depth: Option<u32>,
+    /// Number of solver restarts (SCIP calls these "runs"; Gurobi occasionally
+    /// does an internal restart; most solvers default to 0/1).
+    pub restarts: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -44,6 +44,11 @@ reads it back. A round-trip test (`display_roundtrips`) keeps the two honest.
 | `progress` | `rows=<u> last_time=<f\|->` + indented rows                  | yes (may have 0 rows) |
 | `parser`   | `version=<str> git=<hash\|->`                                | yes      |
 
+> **`other_data`** (`Vec<NamedValue>` in the Rust schema) is intentionally
+> **not** serialized by the text format. Use JSON (`.olog`) for full fidelity;
+> the text format is a human summary + machine-parseable contract for the
+> Core + Extended tiers only.
+
 All values are **required** in emitted output — omissions are represented as
 `-` (dash). Parsers should treat a bare `-` as `None`.
 
