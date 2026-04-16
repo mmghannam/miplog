@@ -298,7 +298,12 @@ fn set_status(s: &str, log: &mut SolverLog) {
         log.termination.status = Status::Unbounded;
     } else if s.contains("Time limit") || s.contains("time limit") {
         log.termination.status = Status::TimeLimit;
-    } else if s.contains("iteration limit") || s.contains("node limit") {
+    } else if s.to_lowercase().contains("iteration limit")
+        || s.to_lowercase().contains("node limit")
+        || s.to_lowercase().contains("solution limit")
+        || s.to_lowercase().contains("objective limit")
+        || s.to_lowercase().contains("interrupt")
+    {
         log.termination.status = Status::OtherLimit;
     }
 }

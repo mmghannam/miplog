@@ -1,5 +1,5 @@
 
-Gurobi 12.0.3 (mac64[arm]) logging started Thu Apr 16 09:26:11 2026
+Gurobi 12.0.3 (mac64[arm]) logging started Thu Apr 16 09:41:02 2026
 
 Set parameter LogFile to value "/Users/ghannam/projects/orlog/tests/fixtures/logs/gurobi.log"
 Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[arm] - Darwin 24.6.0 24G84)
@@ -79,7 +79,7 @@ Cutting planes:
   Cover: 2
   MIR: 24
 
-Explored 1 nodes (1279 simplex iterations) in 0.08 seconds (0.08 work units)
+Explored 1 nodes (1279 simplex iterations) in 0.09 seconds (0.08 work units)
 Thread count was 14 (of 14 available processors)
 
 Solution count 10: 7615 7865 8055 ... 8920

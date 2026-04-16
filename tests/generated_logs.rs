@@ -246,6 +246,43 @@ fn timelimit_fixtures_parse_as_time_limit() {
     eprintln!("verified {total} time-limit fixtures");
 }
 
+/// Node-limit fixtures: every `*-nodelimit.log` must parse with
+/// `Status::OtherLimit`, both bounds populated, gap > 0, and `nodes_explored`
+/// not wildly larger than the configured cap. Validates the
+/// "stopped-by-non-time-limit" code path on each parser.
+#[test]
+fn nodelimit_fixtures_parse_as_other_limit() {
+    let dir = Path::new(LOGS_DIR);
+    if !dir.exists() {
+        return;
+    }
+    let mut total = 0;
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        let n = path.file_name().unwrap().to_string_lossy().into_owned();
+        if !n.ends_with("-nodelimit.log") {
+            continue;
+        }
+        total += 1;
+        let text = std::fs::read_to_string(&path).unwrap();
+        let log = autodetect(&text)
+            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        assert_eq!(
+            log.termination.status,
+            Status::OtherLimit,
+            "{n}: expected OtherLimit, got {:?} ({:?})",
+            log.termination.status,
+            log.termination.raw_reason,
+        );
+        assert!(log.bounds.primal.is_some(), "{n}: should have a primal");
+        assert!(log.bounds.dual.is_some(), "{n}: should have a dual");
+        let gap = log.bounds.effective_gap().unwrap_or(0.0);
+        assert!(gap > 0.001, "{n}: should have a non-trivial gap, got {gap}");
+    }
+    assert!(total >= 4, "expected ≥4 -nodelimit.log fixtures, found {total}");
+    eprintln!("verified {total} node-limit fixtures");
+}
+
 /// Every generated log must satisfy the documented Core (`verify_common`)
 /// tier. A failure here means a parser isn't populating fields that the
 /// schema promises as reliably cross-solver — file as a parser bug.

@@ -1,0 +1,58 @@
+
+Gurobi 12.0.3 (mac64[arm]) logging started Thu Apr 16 09:41:21 2026
+
+Set parameter LogFile to value "/Users/ghannam/projects/orlog/tests/fixtures/logs/gurobi-nodelimit.log"
+Set parameter NodeLimit to value 5
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[arm] - Darwin 24.6.0 24G84)
+
+CPU model: Apple M4 Pro
+Thread count: 14 physical cores, 14 logical processors, using up to 14 threads
+
+Non-default parameters:
+NodeLimit  5
+
+Optimize a model with 396 rows, 322 columns and 1815 nonzeros
+Model fingerprint: 0xf413de7e
+Variable types: 20 continuous, 302 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 8e+06]
+  Objective range  [1e+00, 1e+06]
+  Bounds range     [1e+00, 8e+02]
+  RHS range        [1e+00, 8e+06]
+Presolve removed 6 rows and 6 columns
+Presolve time: 0.00s
+Presolved: 390 rows, 316 columns, 1803 nonzeros
+Variable types: 19 continuous, 297 integer (297 binary)
+Found heuristic solution: objective 3.133356e+09
+
+Root relaxation: objective 8.000024e+08, 72 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0 8.0000e+08    0   72 3.1334e+09 8.0000e+08  74.5%     -    0s
+H    0     0                    2.600019e+09 8.0000e+08  69.2%     -    0s
+H    0     0                    2.366684e+09 8.0000e+08  66.2%     -    0s
+     0     0 8.0000e+08    0   72 2.3667e+09 8.0000e+08  66.2%     -    0s
+     0     0 8.0000e+08    0   72 2.3667e+09 8.0000e+08  66.2%     -    0s
+     0     0 8.0000e+08    0   79 2.3667e+09 8.0000e+08  66.2%     -    0s
+     0     0 8.0000e+08    0   78 2.3667e+09 8.0000e+08  66.2%     -    0s
+H    0     0                    2.366684e+09 8.0000e+08  66.2%     -    0s
+H    0     0                    2.266683e+09 8.0000e+08  64.7%     -    0s
+     0     2 8.0000e+08    0   75 2.2667e+09 8.0000e+08  64.7%     -    0s
+
+Cutting planes:
+  Gomory: 83
+  Implied bound: 21
+  MIR: 2
+  RLT: 66
+  Relax-and-lift: 41
+  PSD: 7
+
+Explored 7 nodes (744 simplex iterations) in 0.04 seconds (0.05 work units)
+Thread count was 14 (of 14 available processors)
+
+Solution count 5: 2.26668e+09 2.36668e+09 2.36668e+09 ... 3.13336e+09
+
+Node limit reached
+Best objective 2.266683250000e+09, best bound 8.000030561965e+08, gap 64.7060%

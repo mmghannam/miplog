@@ -38,11 +38,13 @@ GLASS4 = HERE / "fixtures" / "glass4.mps"
 # Returns True if a usable log was produced.
 # ---------------------------------------------------------------------------
 
-def generate_highs(mps: Path, time_limit, log: Path) -> bool:
+def generate_highs(mps: Path, time_limit, node_limit, log: Path) -> bool:
     # CLI first.
     args = ["highs", str(mps), "--solution_file", "/dev/null", "--log_file", str(log)]
     if time_limit:
         args += ["--time_limit", str(time_limit)]
+    if node_limit:
+        args += ["--mip_max_nodes", str(node_limit)]
     try:
         subprocess.run(args, capture_output=True, text=True, timeout=time_limit + 30 if time_limit else 60)
         if log.exists() and log.stat().st_size > 200:
@@ -56,6 +58,8 @@ def generate_highs(mps: Path, time_limit, log: Path) -> bool:
         h.setOptionValue("log_file", str(log))
         if time_limit:
             h.setOptionValue("time_limit", float(time_limit))
+        if node_limit:
+            h.setOptionValue("mip_max_nodes", int(node_limit))
         h.readModel(str(mps))
         h.run()
         return log.exists() and log.stat().st_size > 200
@@ -63,15 +67,20 @@ def generate_highs(mps: Path, time_limit, log: Path) -> bool:
         return False
 
 
-def generate_scip(mps: Path, time_limit, log: Path) -> bool:
+def generate_scip(mps: Path, time_limit, node_limit, log: Path) -> bool:
     binary = os.environ.get("SCIP_BINARY", "scip")
+    pre = []
     if time_limit:
+        pre.append(f"set limits time {time_limit}")
+    if node_limit:
+        pre.append(f"set limits nodes {node_limit}")
+    if pre:
         # Bundle the limit-set + read + optimize into one `-c` string. SCIP's
         # CLI treats each `-c` as a separate session script and only runs the
         # last instruction set; using `-c` plus `-f` would silently drop the
         # `-c` content (and its banner suppression).
         cmd = [binary, "-l", str(log), "-c",
-               f"set limits time {time_limit} read {mps} optimize quit"]
+               f"{' '.join(pre)} read {mps} optimize quit"]
     else:
         cmd = [binary, "-l", str(log), "-f", str(mps)]
     try:
@@ -87,6 +96,8 @@ def generate_scip(mps: Path, time_limit, log: Path) -> bool:
         m.setLogfile(str(log))
         if time_limit:
             m.setParam("limits/time", float(time_limit))
+        if node_limit:
+            m.setParam("limits/nodes", int(node_limit))
         m.readProblem(str(mps))
         m.optimize()
         return log.exists() and log.stat().st_size > 200
@@ -94,20 +105,22 @@ def generate_scip(mps: Path, time_limit, log: Path) -> bool:
         return False
 
 
-def generate_gurobi(mps: Path, time_limit, log: Path) -> bool:
+def generate_gurobi(mps: Path, time_limit, node_limit, log: Path) -> bool:
     try:
         import gurobipy as gp
         m = gp.read(str(mps))
         m.setParam("LogFile", str(log))
         if time_limit:
             m.setParam("TimeLimit", float(time_limit))
+        if node_limit:
+            m.setParam("NodeLimit", int(node_limit))
         m.optimize()
         return log.exists() and log.stat().st_size > 200
     except Exception:
         return False
 
 
-def generate_copt(mps: Path, time_limit, log: Path) -> bool:
+def generate_copt(mps: Path, time_limit, node_limit, log: Path) -> bool:
     try:
         import coptpy as cp
         env = cp.Envr()
@@ -115,6 +128,8 @@ def generate_copt(mps: Path, time_limit, log: Path) -> bool:
         m.setLogFile(str(log))
         if time_limit:
             m.setParam("TimeLimit", float(time_limit))
+        if node_limit:
+            m.setParam("NodeLimit", int(node_limit))
         m.read(str(mps))
         m.solve()
         return log.exists() and log.stat().st_size > 200
@@ -122,7 +137,7 @@ def generate_copt(mps: Path, time_limit, log: Path) -> bool:
         return False
 
 
-def generate_xpress(mps: Path, time_limit, log: Path) -> bool:
+def generate_xpress(mps: Path, time_limit, node_limit, log: Path) -> bool:
     try:
         import xpress as xp
         # Initialize community license if available
@@ -139,19 +154,23 @@ def generate_xpress(mps: Path, time_limit, log: Path) -> bool:
         if time_limit:
             # Xpress uses `maxtime` (negative = soft limit including output).
             m.setControl("maxtime", int(time_limit))
+        if node_limit:
+            m.setControl("maxnode", int(node_limit))
         m.optimize()
         return log.exists() and log.stat().st_size > 200
     except Exception:
         return False
 
 
-def generate_cbc(mps: Path, time_limit, log: Path) -> bool:
+def generate_cbc(mps: Path, time_limit, node_limit, log: Path) -> bool:
     try:
         sol = tempfile.NamedTemporaryFile(suffix=".sol", delete=False)
         sol.close()
         cmd = ["cbc", str(mps)]
         if time_limit:
             cmd += ["seconds", str(time_limit)]
+        if node_limit:
+            cmd += ["maxN", str(node_limit)]
         cmd += ["solve", "solution", sol.name]
         r = subprocess.run(cmd, capture_output=True, text=True,
                            timeout=time_limit + 30 if time_limit else 60)
@@ -162,7 +181,7 @@ def generate_cbc(mps: Path, time_limit, log: Path) -> bool:
         return False
 
 
-def generate_cplex(mps: Path, time_limit, log: Path) -> bool:
+def generate_cplex(mps: Path, time_limit, node_limit, log: Path) -> bool:
     try:
         import cplex
         c = cplex.Cplex()
@@ -183,6 +202,8 @@ def generate_cplex(mps: Path, time_limit, log: Path) -> bool:
         c.set_warning_stream(w)
         if time_limit:
             c.parameters.timelimit.set(float(time_limit))
+        if node_limit:
+            c.parameters.mip.limits.nodes.set(int(node_limit))
         c.solve()
         status_str = c.solution.get_status_string()
         try:
@@ -199,7 +220,7 @@ def generate_cplex(mps: Path, time_limit, log: Path) -> bool:
         return False
 
 
-def generate_mosek(mps: Path, time_limit, log: Path) -> bool:
+def generate_mosek(mps: Path, time_limit, node_limit, log: Path) -> bool:
     try:
         import mosek
         with mosek.Env() as env:
@@ -237,20 +258,29 @@ def main():
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     suites = [
-        # (instance, time_limit, log_suffix)
-        (P0201, None, ""),
+        # (instance, time_limit, node_limit, log_suffix)
+        (P0201, None, None, ""),
         # 2-second cap on glass4 — short enough that even Gurobi 12 on a fast
         # machine doesn't close it (we measured ~3.75s for full solve), so
         # every solver hits the time limit and we exercise the parser's
         # `Status::TimeLimit` + non-zero gap code paths.
-        (GLASS4, 2, "-timelimit"),
+        (GLASS4, 2, None, "-timelimit"),
+        # 5-node cap on glass4 — exercises the node-limit / "OtherLimit"
+        # code paths. Solvers that don't expose a node-limit knob via their
+        # API simply produce no fixture.
+        (GLASS4, None, 5, "-nodelimit"),
     ]
 
-    for mps, time_limit, suffix in suites:
+    for mps, time_limit, node_limit, suffix in suites:
         if not mps.exists():
             print(f"skip {mps.name}: not found")
             continue
-        label = f"{mps.stem}" + (f" (time limit {time_limit}s)" if time_limit else "")
+        bits = []
+        if time_limit:
+            bits.append(f"time limit {time_limit}s")
+        if node_limit:
+            bits.append(f"node limit {node_limit}")
+        label = mps.stem + (f" ({', '.join(bits)})" if bits else "")
         print(f"\n=== {label} ===")
         generated, skipped = [], []
         for name, gen in GENERATORS.items():
@@ -260,7 +290,7 @@ def main():
             # produces (and confuse parsers that pick the first match).
             if log.exists():
                 log.unlink()
-            ok = gen(mps, time_limit, log)
+            ok = gen(mps, time_limit, node_limit, log)
             # Clean up partial / too-small outputs whether `gen` claimed
             # success or not — Mosek without a license, for instance, writes
             # ~14 lines of read-only banner before erroring out.

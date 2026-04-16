@@ -42,13 +42,13 @@ Solving report
   Primal bound      7615
   Dual bound        7615
   Gap               0% (tolerance: 0.01%)
-  P-D integral      0.0285705776778
+  P-D integral      0.0296972530054
   Solution status   feasible
                     7615 (objective)
                     0 (bound viol.)
                     3.33066907388e-16 (int. viol.)
                     0 (row viol.)
-  Timing            0.67
+  Timing            0.69
   Max sub-MIP depth 2
   Nodes             13
   Repair LPs        0

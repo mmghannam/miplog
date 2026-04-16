@@ -42,6 +42,19 @@ impl LogParser for GurobiParser {
             log.termination.raw_reason = Some("Time limit reached".into());
         } else if text.contains("Out of memory") {
             log.termination.status = Status::MemoryLimit;
+        } else if text.contains("Node limit reached")
+            || text.contains("Solution limit reached")
+            || text.contains("Iteration limit reached")
+            || text.contains("Work limit reached")
+        {
+            log.termination.status = Status::OtherLimit;
+            log.termination.raw_reason = Some(
+                ["Node", "Solution", "Iteration", "Work"]
+                    .iter()
+                    .find(|w| text.contains(&format!("{w} limit reached")))
+                    .map(|w| format!("{w} limit reached"))
+                    .unwrap_or_else(|| "limit reached".into()),
+            );
         }
 
         // Time + nodes: "Explored N nodes (M simplex iterations) in T seconds"

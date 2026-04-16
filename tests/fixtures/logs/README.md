@@ -21,6 +21,15 @@ COPT 8) hit the time limit and produce a `Status::TimeLimit` run with
 non-zero gap. Exercises the parsers' early-termination paths: time-limit
 status detection, primal/dual bounds when not proven optimal, gap > 0.
 
+### `<solver>-nodelimit.log` — glass4 with a 5-node cap
+
+Same instance, capped at 5 B&B nodes via each solver's node-limit knob
+(Gurobi `NodeLimit`, SCIP `limits/nodes`, HiGHS `mip_max_nodes`,
+COPT `NodeLimit`, Xpress `MAXNODE`, CBC `maxN`, CPLEX `mip.limits.nodes`).
+Termination strings vary per solver — `"node limit reached"` for most,
+`"Solution limit reached"` for HiGHS, `STOPPING - MAXNODE …` for Xpress —
+all should classify as `Status::OtherLimit`.
+
 ## Currently-committed versions
 
 Each fixture log was produced by the solver version shown below — the

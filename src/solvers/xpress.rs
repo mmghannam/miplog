@@ -37,7 +37,17 @@ impl LogParser for XpressParser {
             || text.contains("Problem is infeasible")
         {
             log.termination.status = Status::Infeasible;
+        } else if let Some(reason) = xpress_stop_reason(text) {
+            // STOPPING - MAXTIME / MAXNODE / MAXSOL / MAXMIPSOL / MIPRELSTOP /
+            // MIPABSSTOP target reached. Distinguish time vs other-limit.
+            log.termination.raw_reason = Some(reason.clone());
+            log.termination.status = if reason.contains("MAXTIME") {
+                Status::TimeLimit
+            } else {
+                Status::OtherLimit
+            };
         } else if text.contains("*** Search unfinished ***") {
+            // Fallback when no STOPPING line is present.
             log.termination.status = Status::TimeLimit;
             log.termination.raw_reason = Some("Search unfinished".into());
         }
@@ -252,6 +262,13 @@ fn parse_work_units(text: &str) -> Option<serde_json::Value> {
     obj.insert("work".into(), parse_f64_json(&c[1]));
     obj.insert("work_units_per_second".into(), parse_f64_json(&c[2]));
     Some(serde_json::Value::Object(obj))
+}
+
+/// First "STOPPING - <REASON>" trigger keyword (MAXTIME / MAXNODE / MAXSOL /
+/// MIPRELSTOP / MIPABSSTOP / etc.). Used to classify termination status.
+fn xpress_stop_reason(text: &str) -> Option<String> {
+    let re = Regex::new(r"STOPPING - (\S+)").unwrap();
+    re.captures(text).map(|c| c[1].to_string())
 }
 
 /// "STOPPING - MIPRELSTOP target reached (MIPRELSTOP=0.0001  gap=0)."
