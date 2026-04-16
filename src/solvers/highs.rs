@@ -1,4 +1,4 @@
-//! HiGHS log parser. Tested against HiGHS 1.12 output.
+//! HiGHS log parser. Tested against HiGHS 1.12–1.14 output.
 
 use crate::solvers::progress::{parse_gap, parse_time_token};
 use crate::{schema::*, LogParser, ParseError, Solver};
@@ -74,16 +74,200 @@ impl LogParser for HighsParser {
             log.tree.nodes_explored = c[1].replace(',', "").parse().ok();
         }
 
-        // LP iterations: "Simplex   iterations: N" or "LP iterations N"
-        if let Some(c) = re_simplex_iters().captures(text) {
+        // LP iterations — prefer the Solving report "LP iterations N" (the
+        // authoritative total including strong-branching + separation +
+        // heuristics), fall back to the older "Simplex iterations: N" line.
+        if let Some(c) = re_lp_iterations().captures(text) {
             log.tree.simplex_iterations = c[1].replace(',', "").parse().ok();
+        } else if let Some(c) = re_simplex_iters().captures(text) {
+            log.tree.simplex_iterations = c[1].replace(',', "").parse().ok();
+        }
+
+        // Primal-dual integral: "P-D integral  0.0362067575694"
+        if let Some(c) = re_pd_integral().captures(text) {
+            log.bounds.primal_dual_integral = c[1].parse().ok();
+        }
+
+        // Max sub-MIP depth: "Max sub-MIP depth 2" — HiGHS specifically calls
+        // this "sub-MIP depth" (depth of deepest sub-problem); it's the closest
+        // analogue to SCIP/Gurobi `max_depth` HiGHS reports.
+        if let Some(c) = re_max_depth().captures(text) {
+            log.tree.max_depth = c[1].parse().ok();
+        }
+
+        // Restarts: HiGHS prints "restarting" each time the search restarts
+        // after a batch of heuristic-driven LP reductions. Count occurrences.
+        let restarts = text
+            .lines()
+            .filter(|l| l.contains("restarting") || l.starts_with("Model after restart"))
+            .count();
+        if restarts > 0 {
+            // "restarting" and "Model after restart" appear pairwise; divide by 2 to avoid double-counting.
+            log.tree.restarts = Some((restarts as u32) / 2);
         }
 
         // Progress table
         log.progress = parse_progress(text);
 
+        // If solutions_found wasn't set but we have progress event rows,
+        // infer count from distinct incumbents.
+        if log.tree.solutions_found.is_none() && !log.progress.is_empty() {
+            let mut last: Option<f64> = None;
+            let mut count = 0u64;
+            for i in 0..log.progress.len() {
+                if let Some(p) = log.progress.primal[i] {
+                    if last.map_or(true, |lp| (lp - p).abs() > 1e-9) {
+                        count += 1;
+                        last = Some(p);
+                    }
+                }
+            }
+            if count > 0 {
+                log.tree.solutions_found = Some(count);
+            }
+        }
+
+        // Solver-specific rich data.
+        populate_other_data(text, &mut log);
+
         Ok(log)
     }
+}
+
+fn populate_other_data(text: &str, log: &mut SolverLog) {
+    if let Some(v) = parse_coefficient_ranges(text) {
+        log.other_data.push(NamedValue::new("highs.coefficient_ranges", v));
+    }
+    if let Some(v) = parse_variable_types(text) {
+        log.other_data.push(NamedValue::new("highs.variable_types_after_presolve", v));
+    }
+    if let Some(v) = parse_solution_quality(text) {
+        log.other_data.push(NamedValue::new("highs.solution_quality", v));
+    }
+    if let Some(v) = parse_lp_iter_breakdown(text) {
+        log.other_data.push(NamedValue::new("highs.lp_iteration_breakdown", v));
+    }
+}
+
+/// Parse the "Coefficient ranges" block:
+///   Coefficient ranges:
+///     Matrix  [1e+00, 6e+01]
+///     Cost    [5e+01, 1e+04]
+///     Bound   [1e+00, 1e+00]
+///     RHS     [1e+00, 5e+01]
+fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let hdr = R.get_or_init(|| Regex::new(r"(?m)^Coefficient ranges:").unwrap());
+    let m = hdr.find(text)?;
+    let row = Regex::new(r"^\s+(Matrix|Cost|Bound|RHS)\s+\[([^,]+),\s*([^\]]+)\]").unwrap();
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(8) {
+        if line.trim().is_empty() || !line.starts_with("  ") {
+            break;
+        }
+        if let Some(c) = row.captures(line) {
+            let name = c[1].to_lowercase();
+            let mut inner = serde_json::Map::new();
+            inner.insert("min".into(), parse_f64_or_str(c[2].trim()));
+            inner.insert("max".into(), parse_f64_or_str(c[3].trim()));
+            obj.insert(name, serde_json::Value::Object(inner));
+        }
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+/// Parse the variable-type breakdown after presolve:
+///   177 cols (174 binary, 3 integer, 0 implied int., 0 continuous, 0 domain fixed)
+fn parse_variable_types(text: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let re = R.get_or_init(|| {
+        Regex::new(
+            r"(\d+)\s+cols\s+\((\d+)\s+binary,\s*(\d+)\s+integer,\s*(\d+)\s+implied int\.,\s*(\d+)\s+continuous,\s*(\d+)\s+domain fixed\)",
+        )
+        .unwrap()
+    });
+    let c = re.captures(text)?;
+    let mut obj = serde_json::Map::new();
+    obj.insert("total".into(), parse_json_u64(&c[1]));
+    obj.insert("binary".into(), parse_json_u64(&c[2]));
+    obj.insert("integer".into(), parse_json_u64(&c[3]));
+    obj.insert("implied_integer".into(), parse_json_u64(&c[4]));
+    obj.insert("continuous".into(), parse_json_u64(&c[5]));
+    obj.insert("domain_fixed".into(), parse_json_u64(&c[6]));
+    Some(serde_json::Value::Object(obj))
+}
+
+/// Parse the Solving report "Solution status" quality numbers:
+///     Solution status   feasible
+///                       7615 (objective)
+///                       0 (bound viol.)
+///                       3.33066907388e-16 (int. viol.)
+///                       0 (row viol.)
+fn parse_solution_quality(text: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let hdr = R.get_or_init(|| Regex::new(r"(?m)^\s+Solution status\s+\S+").unwrap());
+    let m = hdr.find(text)?;
+    let row = Regex::new(r"^\s+(\S+)\s+\(([a-z. ]+)\)").unwrap();
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(6) {
+        if line.trim().is_empty() {
+            break;
+        }
+        let c0 = line.chars().next().unwrap_or(' ');
+        if !c0.is_whitespace() {
+            break;
+        }
+        if let Some(c) = row.captures(line) {
+            let name = c[2]
+                .trim()
+                .replace(['.', ' '], "_")
+                .replace("__", "_")
+                .trim_end_matches('_')
+                .to_string();
+            obj.insert(name, parse_f64_or_str(&c[1]));
+        }
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+/// Parse the LP-iteration breakdown under the "LP iterations" total:
+///     LP iterations     24777
+///                       21761 (strong br.)
+///                       1063 (separation)
+///                       695 (heuristics)
+fn parse_lp_iter_breakdown(text: &str) -> Option<serde_json::Value> {
+    static R: OnceLock<Regex> = OnceLock::new();
+    let hdr = R.get_or_init(|| Regex::new(r"(?m)^\s+LP iterations\s+\d").unwrap());
+    let m = hdr.find(text)?;
+    let row = Regex::new(r"^\s+(\d+)\s+\(([^)]+)\)").unwrap();
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(6) {
+        if line.trim().is_empty() {
+            break;
+        }
+        let c0 = line.chars().next().unwrap_or(' ');
+        if !c0.is_whitespace() {
+            break;
+        }
+        if let Some(c) = row.captures(line) {
+            let name = c[2].trim().trim_end_matches('.').replace(['.', ' '], "_");
+            obj.insert(name, parse_json_u64(&c[1]));
+        }
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_json_u64(s: &str) -> serde_json::Value {
+    s.parse::<u64>().map(serde_json::Value::from).unwrap_or(serde_json::Value::Null)
+}
+
+fn parse_f64_or_str(s: &str) -> serde_json::Value {
+    if let Ok(n) = s.parse::<f64>() {
+        if let Some(n) = serde_json::Number::from_f64(n) {
+            return serde_json::Value::Number(n);
+        }
+    }
+    serde_json::Value::String(s.to_string())
 }
 
 fn parse_status(text: &str, log: &mut SolverLog) {
@@ -141,17 +325,18 @@ fn parse_progress(text: &str) -> ProgressTable {
             }
             continue;
         }
-        // Table ends at "Solving report" or "Restarting" or next section
-        if line.starts_with("Solving report")
-            || line.starts_with("Restarting")
-            || line.starts_with("Model after restart")
-        {
-            // After restart, a new table may begin — keep going
-            if line.starts_with("Restarting") || line.starts_with("Model after restart") {
-                in_table = false; // will re-enter on next header
-                continue;
-            }
+        // Table ends only at the solving report / final summary. Restart
+        // notices ("Model after restart has …", "… restarting") interrupt the
+        // flow but don't end the table — rows continue without a new header.
+        if line.starts_with("Solving report") {
             break;
+        }
+        // Skip restart narration + coefficient-range side-notes inside the table.
+        if line.starts_with("Model after restart")
+            || line.contains("restarting")
+            || line.contains("inactive integer columns")
+        {
+            continue;
         }
         if let Some(row) = parse_row(line) {
             out.push(row);
@@ -290,6 +475,23 @@ fn re_nodes() -> &'static Regex {
 fn re_simplex_iters() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"Simplex\s+iterations:\s*([\d,]+)").unwrap())
+}
+
+fn re_lp_iterations() -> &'static Regex {
+    // Solving report: "  LP iterations     24777"
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"(?m)^\s+LP iterations\s+([\d,]+)").unwrap())
+}
+
+fn re_pd_integral() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"P-D integral\s+([\d.eE+\-]+)").unwrap())
+}
+
+fn re_max_depth() -> &'static Regex {
+    // HiGHS: "Max sub-MIP depth 2"
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"Max sub-MIP depth\s+(\d+)").unwrap())
 }
 
 #[cfg(test)]
