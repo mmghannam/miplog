@@ -1,4 +1,4 @@
-//! FICO Xpress log parser. Tested against Xpress 9.8 output.
+//! FICO Xpress log parser. Tested against Xpress 9.6–9.8 output.
 
 use crate::solvers::progress::{event_from_marker, parse_gap, parse_or_dash};
 use crate::{schema::*, LogParser, ParseError, Solver};
@@ -61,14 +61,20 @@ impl LogParser for XpressParser {
             log.tree.nodes_explored = c[2].parse().ok();
         }
 
-        // Pre-presolve dims: "NNN (...) rows / NNN (...) structural columns / NNN (...) non-zero elements"
+        // Pre-presolve dims — two formats seen:
+        //   (a) "Problem Statistics" multi-line block (older Xpress banner)
+        //   (b) "Original problem has: 133 rows 201 cols 1923 elements" (newer)
         if let Some(c) = re_problem_stats().captures(text) {
+            log.presolve.rows_before = c[1].parse().ok();
+            log.presolve.cols_before = c[2].parse().ok();
+            log.presolve.nonzeros_before = c[3].parse().ok();
+        } else if let Some(c) = re_original_one_line().captures(text) {
             log.presolve.rows_before = c[1].parse().ok();
             log.presolve.cols_before = c[2].parse().ok();
             log.presolve.nonzeros_before = c[3].parse().ok();
         }
 
-        // Presolved problem dims
+        // Presolved problem dims (two format variants, same pattern).
         if let Some(c) = re_presolved().captures(text) {
             log.presolve.rows_after = c[1].parse().ok();
             log.presolve.cols_after = c[2].parse().ok();
@@ -80,34 +86,251 @@ impl LogParser for XpressParser {
             log.timing.presolve_seconds = c[1].parse().ok();
         }
 
+        // Root LP (dual bound before branching): "Final objective : 7.185e+03"
+        // appears right after the concurrent LP solve, before root cutting.
+        if let Some(c) = re_root_final_obj().captures(text) {
+            log.bounds.root_dual = c[1].parse().ok();
+        }
+
+        // Primal-dual integral: "Solution time / primaldual integral : 0.13s/ 21.48%"
+        if let Some(c) = re_pd_integral().captures(text) {
+            log.bounds.primal_dual_integral = c[1].parse::<f64>().ok().map(|v| v / 100.0);
+        }
+
+        // First heuristic solution: "*** Solution found: 10170.00000 Time: 0.01 Heuristic: e ***"
+        if let Some(c) = re_first_solution_found().captures(text) {
+            log.bounds.first_primal = c[1].parse().ok();
+            log.bounds.first_primal_time_seconds = c[2].parse().ok();
+        }
+
+        // Cuts total: "Cuts in the matrix : 29"
+        if let Some(c) = re_cuts_total().captures(text) {
+            if let Ok(n) = c[1].parse::<u64>() {
+                if n > 0 {
+                    log.cuts.insert("total".into(), n);
+                }
+            }
+        }
+
+        // Work units: "Work / work units per second : 0.32 / 2.45"
+        //  -> expose as metadata-only; no common schema field (yet).
+
         log.progress = parse_progress(text);
+
+        // Max depth from progress table, if any depth values are populated.
+        log.tree.max_depth = log.progress.depth.iter().filter_map(|d| *d).max();
+
+        populate_other_data(text, &mut log);
 
         Ok(log)
     }
 }
 
-/// Parse Xpress B&B progress rows. Header looks like:
-///   `    Node     BestSoln    BestBound   Sols Active  Depth     Gap     GInf   Time`
+fn populate_other_data(text: &str, log: &mut SolverLog) {
+    if let Some(v) = parse_coefficient_ranges(text) {
+        log.other_data.push(NamedValue::new("xpress.coefficient_ranges", v));
+    }
+    if let Some(v) = parse_symmetry(text) {
+        log.other_data.push(NamedValue::new("xpress.symmetry", v));
+    }
+    if let Some(v) = parse_threads_and_memory(text) {
+        log.other_data.push(NamedValue::new("xpress.run_config", v));
+    }
+    if let Some(v) = parse_heuristic_solutions(text) {
+        log.other_data.push(NamedValue::new("xpress.pre_bb_heuristic_solutions", v));
+    }
+    if let Some(v) = parse_work_units(text) {
+        log.other_data.push(NamedValue::new("xpress.work", v));
+    }
+    if let Some(v) = parse_stopping_reason(text) {
+        log.other_data.push(NamedValue::new("xpress.stopping_reason", v));
+    }
+    if let Some(v) = parse_lp_violations(text) {
+        log.other_data.push(NamedValue::new("xpress.solution_quality", v));
+    }
+}
+
+/// Parse the 3-row "Coefficient range" block (original vs solved side-by-side).
+fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
+    let hdr = Regex::new(r"(?m)^Coefficient range\s").unwrap();
+    let m = hdr.find(text)?;
+    // Rows: "  <Label> [min,max] : [ a, b] / [ c, d]"
+    let row = Regex::new(
+        r"^\s+(Coefficients|RHS and bounds|Objective)\s+\[min,max\]\s*:\s*\[\s*([^\],]+?),\s*([^\]]+?)\]\s*/\s*\[\s*([^\],]+?),\s*([^\]]+?)\]",
+    )
+    .unwrap();
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(6) {
+        if line.trim().is_empty() {
+            break;
+        }
+        if let Some(c) = row.captures(line) {
+            let name = match &c[1] {
+                "RHS and bounds" => "rhs_and_bounds".to_string(),
+                s => s.to_lowercase(),
+            };
+            let mut group = serde_json::Map::new();
+            let mut orig = serde_json::Map::new();
+            orig.insert("min".into(), parse_f64_json(c[2].trim()));
+            orig.insert("max".into(), parse_f64_json(c[3].trim()));
+            let mut solved = serde_json::Map::new();
+            solved.insert("min".into(), parse_f64_json(c[4].trim()));
+            solved.insert("max".into(), parse_f64_json(c[5].trim()));
+            group.insert("original".into(), serde_json::Value::Object(orig));
+            group.insert("solved".into(), serde_json::Value::Object(solved));
+            obj.insert(name, serde_json::Value::Object(group));
+        }
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+/// Parse the "Symmetric problem" block:
+///   Symmetric problem: generators: 2, support set: 178
+///    Number of orbits: 52, largest orbit: 4
+///    Row orbits: 39, row support: 96
+fn parse_symmetry(text: &str) -> Option<serde_json::Value> {
+    let hdr = Regex::new(r"(?m)^Symmetric problem:").unwrap();
+    let m = hdr.find(text)?;
+    let body: String = std::iter::once(&text[m.start()..m.end()])
+        .chain(text[m.end()..].lines().skip(1).take(3).map(|l| &l[..]))
+        .collect::<Vec<_>>()
+        .join(" ");
+    let mut obj = serde_json::Map::new();
+    for (key, re_src) in [
+        ("generators", r"generators:\s+(\d+)"),
+        ("support_set", r"support set:\s+(\d+)"),
+        ("orbits", r"Number of orbits:\s+(\d+)"),
+        ("largest_orbit", r"largest orbit:\s+(\d+)"),
+        ("row_orbits", r"Row orbits:\s+(\d+)"),
+        ("row_support", r"row support:\s+(\d+)"),
+    ] {
+        if let Some(c) = Regex::new(re_src).unwrap().captures(&body) {
+            obj.insert(key.into(), parse_f64_json(&c[1]));
+        }
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+/// "Minimizing MILP p0201 using up to 14 threads and up to 24GB memory"
+fn parse_threads_and_memory(text: &str) -> Option<serde_json::Value> {
+    let re = Regex::new(
+        r"using up to (\d+) threads? and up to (\d+)(GB|MB|KB) memory",
+    )
+    .unwrap();
+    let c = re.captures(text)?;
+    let mut obj = serde_json::Map::new();
+    obj.insert("threads".into(), parse_f64_json(&c[1]));
+    obj.insert("memory_limit".into(), serde_json::Value::String(format!("{}{}", &c[2], &c[3])));
+    Some(serde_json::Value::Object(obj))
+}
+
+/// "*** Solution found: 10170.00000 Time: 0.01 Heuristic: e ***"
+fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
+    let re = Regex::new(
+        r"\*\*\* Solution found:\s+([\d.eE+\-]+)\s+Time:\s+([\d.]+)\s+Heuristic:\s+(\S+)\s*\*\*\*",
+    )
+    .unwrap();
+    let mut arr: Vec<serde_json::Value> = Vec::new();
+    for c in re.captures_iter(text) {
+        let mut o = serde_json::Map::new();
+        o.insert("value".into(), parse_f64_json(&c[1]));
+        o.insert("time".into(), parse_f64_json(&c[2]));
+        o.insert("heuristic".into(), serde_json::Value::String(c[3].to_string()));
+        arr.push(serde_json::Value::Object(o));
+    }
+    (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
+}
+
+/// "Work / work units per second : 0.32 / 2.45"
+fn parse_work_units(text: &str) -> Option<serde_json::Value> {
+    let re = Regex::new(
+        r"Work\s*/\s*work units per second\s*:\s*([\d.]+)\s*/\s*([\d.]+)",
+    )
+    .unwrap();
+    let c = re.captures(text)?;
+    let mut obj = serde_json::Map::new();
+    obj.insert("work".into(), parse_f64_json(&c[1]));
+    obj.insert("work_units_per_second".into(), parse_f64_json(&c[2]));
+    Some(serde_json::Value::Object(obj))
+}
+
+/// "STOPPING - MIPRELSTOP target reached (MIPRELSTOP=0.0001  gap=0)."
+fn parse_stopping_reason(text: &str) -> Option<serde_json::Value> {
+    let re = Regex::new(r"STOPPING - ([^(\n]+)(?:\(([^)]+)\))?\.?").unwrap();
+    let c = re.captures(text)?;
+    let mut obj = serde_json::Map::new();
+    obj.insert("reason".into(), serde_json::Value::String(c[1].trim().to_string()));
+    if let Some(extra) = c.get(2) {
+        obj.insert("detail".into(), serde_json::Value::String(extra.as_str().to_string()));
+    }
+    Some(serde_json::Value::Object(obj))
+}
+
+/// LP final violations (primal/dual/complementarity).
+fn parse_lp_violations(text: &str) -> Option<serde_json::Value> {
+    let mut obj = serde_json::Map::new();
+    for (k, re_src) in [
+        ("max_primal_violation", r"Max primal violation\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)"),
+        ("max_dual_violation", r"Max dual violation\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)"),
+        ("max_integer_violation", r"Max integer violation\s+\(abs\s*\)\s*:\s+([\d.eE+\-]+)"),
+        ("max_complementarity_violation", r"Max complementarity viol\.\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)"),
+    ] {
+        if let Some(c) = Regex::new(re_src).unwrap().captures(text) {
+            obj.insert(k.into(), parse_f64_json(&c[1]));
+        }
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_f64_json(s: &str) -> serde_json::Value {
+    if let Ok(v) = s.trim().parse::<f64>() {
+        if let Some(n) = serde_json::Number::from_f64(v) {
+            return serde_json::Value::Number(n);
+        }
+    }
+    serde_json::Value::String(s.trim().to_string())
+}
+
+/// Parse Xpress's progress tables. Xpress has two distinct progress
+/// formats depending on whether B&B branching occurred:
 ///
-/// Two row shapes:
-/// * 9 fields (with incumbent & gap):
-///   `[m] Node BestSoln BestBound Sols Active Depth Gap GInf Time`
-/// * 7 fields (no incumbent yet):
-///   `[m] Node BestBound Sols Active Depth GInf Time`
+/// 1. **B&B tree** table (printed when actual branching happens):
+///    `Node BestSoln BestBound Sols Active Depth Gap GInf Time` (9 cols)
+/// 2. **Root cutting & heuristics** table (printed when the root round
+///    closes the gap without branching):
+///    `Its Type BestSoln BestBound Sols Add Del Gap GInf Time` (10 cols)
 ///
-/// `m` is an optional single-letter marker (e.g. `a`, `b`, `F` for branching
-/// / bound-strengthening events).
+/// Both tables can also contain "P"-marked rows which are new-incumbent
+/// events that skip several columns. We handle both shapes.
 fn parse_progress(text: &str) -> ProgressTable {
     let mut out = ProgressTable::default();
-    let mut in_table = false;
+    #[derive(Copy, Clone, PartialEq)]
+    enum Kind {
+        None,
+        BbTree,
+        RootCutting,
+    }
+    let mut kind = Kind::None;
+
     for line in text.lines() {
-        if !in_table {
-            // Header signature: contains "Node", "BestBound", "Time" on the same line.
+        if kind == Kind::None {
+            // Root-cutting header: contains "Its", "Type", "BestSoln", "BestBound", "Time".
+            if line.contains("Its")
+                && line.contains("BestBound")
+                && line.contains("Add")
+                && line.contains("Del")
+            {
+                kind = Kind::RootCutting;
+                continue;
+            }
+            // B&B header.
             if line.contains("Node")
                 && line.contains("BestBound")
+                && line.contains("Active")
                 && line.trim_end().ends_with("Time")
             {
-                in_table = true;
+                kind = Kind::BbTree;
+                continue;
             }
             continue;
         }
@@ -118,44 +341,45 @@ fn parse_progress(text: &str) -> ProgressTable {
             }
             continue;
         }
-        // End-of-table / summary markers.
         if trimmed.starts_with("***")
             || trimmed.starts_with("Final MIP")
             || trimmed.starts_with("Uncrunching")
             || trimmed.starts_with("Heap usage")
+            || trimmed.starts_with("Cuts in the matrix")
+            || trimmed.starts_with("STOPPING")
         {
             break;
         }
-        if let Some(row) = parse_row(line) {
-            out.push(row);
+        let row = match kind {
+            Kind::BbTree => parse_bb_row(line),
+            Kind::RootCutting => parse_root_cutting_row(line),
+            Kind::None => None,
+        };
+        if let Some(r) = row {
+            out.push(r);
         }
     }
     out
 }
 
-fn parse_row(line: &str) -> Option<NodeSnapshot> {
+fn parse_bb_row(line: &str) -> Option<NodeSnapshot> {
     // Peel an optional single-letter marker.
     let (event, body) = match line.chars().next() {
         Some(c) if c.is_ascii_alphabetic() => (event_from_marker(c), &line[c.len_utf8()..]),
         _ => (None, line),
     };
     let toks: Vec<&str> = body.split_whitespace().collect();
-
     let mut snap = NodeSnapshot::default();
     match toks.len() {
         9 => {
-            // Node BestSoln BestBound Sols Active Depth Gap GInf Time
             snap.nodes_explored = toks[0].parse().ok();
             snap.primal = parse_or_dash(toks[1]);
             snap.dual = parse_or_dash(toks[2]);
-            // toks[3] = Sols (we track this separately if useful later)
             snap.depth = toks[5].parse().ok();
             snap.gap = parse_gap(toks[6]);
-            // toks[7] = GInf
             snap.time_seconds = toks[8].parse().ok()?;
         }
         7 => {
-            // Node BestBound Sols Active Depth GInf Time
             snap.nodes_explored = toks[0].parse().ok();
             snap.dual = parse_or_dash(toks[1]);
             snap.depth = toks[4].parse().ok();
@@ -170,6 +394,47 @@ fn parse_row(line: &str) -> Option<NodeSnapshot> {
     Some(snap)
 }
 
+/// Root cutting rows. Two shapes:
+///   Standard:  "  1  K   7995.0  7265.2  2  15  0  9.13%  24  0"   (10 tok)
+///   Incumbent: "P        7865.0  7265.2  3                 7.63%   0  0"   (8 tok)
+fn parse_root_cutting_row(line: &str) -> Option<NodeSnapshot> {
+    let first = line.chars().next()?;
+    let incumbent = matches!(first, 'P');
+    let event = if incumbent {
+        Some(NodeEvent::BranchSolution)
+    } else {
+        None
+    };
+    let toks: Vec<&str> = line.split_whitespace().collect();
+    let mut snap = NodeSnapshot::default();
+    snap.event = event;
+    if incumbent {
+        // P BestSoln BestBound Sols Gap GInf Time  (7 tok after marker)
+        if toks.len() < 7 {
+            return None;
+        }
+        snap.primal = parse_or_dash(toks[1]);
+        snap.dual = parse_or_dash(toks[2]);
+        // toks[3] = Sols
+        snap.gap = parse_gap(toks[4]);
+        // toks[5] = GInf
+        snap.time_seconds = toks[toks.len() - 1].parse().ok()?;
+    } else {
+        // Its Type BestSoln BestBound Sols Add Del Gap GInf Time  (10 tok)
+        if toks.len() < 10 {
+            return None;
+        }
+        // "Its" is not a node count, but it's the closest analogue — treat
+        // it as iteration index via `lp_iterations` rather than `nodes_explored`.
+        snap.lp_iterations = toks[0].parse().ok();
+        snap.primal = parse_or_dash(toks[2]);
+        snap.dual = parse_or_dash(toks[3]);
+        snap.gap = parse_gap(toks[7]);
+        snap.time_seconds = toks[9].parse().ok()?;
+    }
+    Some(snap)
+}
+
 fn re_problem_stats() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
@@ -178,6 +443,43 @@ fn re_problem_stats() -> &'static Regex {
         )
         .unwrap()
     })
+}
+/// "Original problem has: 133 rows 201 cols 1923 elements" (newer Xpress)
+fn re_original_one_line() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(
+            r"(?ms)Original problem has:\s*\n\s*(\d+)\s+rows?\s+(\d+)\s+cols?\s+(\d+)\s+elements",
+        )
+        .unwrap()
+    })
+}
+fn re_root_final_obj() -> &'static Regex {
+    // The first "Final objective" is the root LP solve (before the MIP loop).
+    // Distinguishing it from "Final MIP objective" is easy: the LP version
+    // appears BEFORE "Starting root cutting & heuristics".
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"(?ms)Final objective\s*:\s*([\d.eE+\-]+)").unwrap())
+}
+fn re_pd_integral() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(r"Solution time\s*/\s*primaldual integral\s*:\s*[\d.]+s/\s*([\d.]+)%")
+            .unwrap()
+    })
+}
+fn re_first_solution_found() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(
+            r"\*\*\* Solution found:\s+([\d.eE+\-]+)\s+Time:\s+([\d.]+)",
+        )
+        .unwrap()
+    })
+}
+fn re_cuts_total() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"Cuts in the matrix\s*:\s*(\d+)").unwrap())
 }
 fn re_presolve_time() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
