@@ -1,3 +1,74 @@
+@01 modified/p0201.mps.gz ===========
+Version identifier: 22.1.2.0 | 2026-03-02 | af0ce9b93
+CPXPARAM_Read_DataCheck                          1
+Tried aggregator 1 time.
+MIP Presolve eliminated 26 rows and 18 columns.
+MIP Presolve added 3 rows and 3 columns.
+MIP Presolve modified 732 coefficients.
+Reduced MIP has 110 rows, 186 columns, and 1507 nonzeros.
+Reduced MIP has 183 binaries, 3 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (2.20 ticks)
+Found incumbent of value 13150.000000 after 0.01 sec. (4.15 ticks)
+Probing changed sense of 6 constraints.
+Probing time = 0.00 sec. (0.65 ticks)
+Tried aggregator 1 time.
+Detecting symmetries...
+MIP Presolve eliminated 3 rows and 3 columns.
+MIP Presolve added 3 rows and 3 columns.
+Reduced MIP has 110 rows, 186 columns, and 1507 nonzeros.
+Reduced MIP has 183 binaries, 3 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (1.08 ticks)
+Probing time = 0.00 sec. (0.62 ticks)
+Clique table members: 920.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 14 threads.
+Root relaxation solution time = 0.00 sec. (1.11 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                        13150.0000        0.0000           100.00%
+*     0+    0                        10750.0000        0.0000           100.00%
+      0     0     7155.0000    25    10750.0000     7155.0000       93   33.44%
+      0     0     7185.0000    54    10750.0000      Cuts: 23      113   33.16%
+*     0+    0                         8495.0000     7185.0000            15.42%
+      0     0     7252.7647    56     8495.0000       Cuts: 6      148   14.62%
+      0     0     7336.0000    64     8495.0000      Cuts: 17      197   13.64%
+      0     0     7366.0000    24     8495.0000       Cuts: 6      209   13.29%
+      0     0     7382.2917    66     8495.0000       Cuts: 8      229   13.10%
+      0     0     7398.1078    73     8495.0000      Cuts: 10      243   12.91%
+      0     0     7440.0000    56     8495.0000       Cuts: 9      267   12.42%
+      0     0     7451.0000    68     8495.0000   ZeroHalf: 6      283   12.29%
+      0     0     7470.5414    64     8495.0000       Cuts: 5      309   12.06%
+*     0+    0                         7835.0000     7470.5414             4.65%
+      0     0     7471.6667    56     7835.0000       Cuts: 5      330    4.64%
+      0     0     7471.6667    64     7835.0000   ZeroHalf: 2      335    4.64%
+      0     0     7475.0000    45     7835.0000   ZeroHalf: 3      346    4.59%
+      0     0     7475.0000    45     7835.0000   ZeroHalf: 5      353    4.59%
+*     0+    0                         7615.0000     7475.0000             1.84%
+      0     0        cutoff           7615.0000     7615.0000      353    0.00%
+Elapsed time = 1.21 sec. (52.57 ticks, tree = 0.01 MB, solutions = 5)
+
+GUB cover cuts applied:  2
+Cover cuts applied:  3
+Mixed integer rounding cuts applied:  1
+Zero-half cuts applied:  16
+
+Root node processing (before b&c):
+  Real time             =    1.21 sec. (52.59 ticks)
+Parallel b&c, 14 threads:
+  Real time             =    0.00 sec. (0.00 ticks)
+  Sync time (average)   =    0.00 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =    1.21 sec. (52.59 ticks)
+
+MIP - integer optimal solution:  Objective = 7.6150000000e+03
+Solution time = 0.00 sec.  Iterations = 353  Nodes = 0
+
+@05 7200
+@01 modified/glass4.mps.gz ===========
 Version identifier: 22.1.2.0 | 2026-03-02 | af0ce9b93
 CPXPARAM_Read_DataCheck                          1
 CPXPARAM_TimeLimit                               2
@@ -125,3 +196,59 @@ Total (root+branch&cut) =    2.00 sec. (2970.80 ticks)
 
 MIP - time limit exceeded:  Objective = 1.6000136000e+09
 Solution time = 0.00 sec.  Iterations = 438166  Nodes = 56313
+
+@05 7200
+@01 modified/glass4.mps.gz ===========
+Version identifier: 22.1.2.0 | 2026-03-02 | af0ce9b93
+CPXPARAM_Read_DataCheck                          1
+CPXPARAM_MIP_Limits_Nodes                        5
+Tried aggregator 1 time.
+MIP Presolve eliminated 4 rows and 5 columns.
+MIP Presolve modified 88 coefficients.
+Reduced MIP has 392 rows, 317 columns, and 1799 nonzeros.
+Reduced MIP has 298 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (0.81 ticks)
+Probing time = 0.00 sec. (0.59 ticks)
+Tried aggregator 1 time.
+Detecting symmetries...
+Reduced MIP has 392 rows, 317 columns, and 1799 nonzeros.
+Reduced MIP has 298 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (1.08 ticks)
+Probing time = 0.00 sec. (0.59 ticks)
+Clique table members: 192.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 14 threads.
+Root relaxation solution time = 0.00 sec. (0.48 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                       3.69170e+09   8.00002e+08            78.33%
+      0     0   8.00002e+08    72   3.69170e+09   8.00002e+08       36   78.33%
+      0     0   8.00002e+08    72   3.69170e+09      Cuts: 72      130   78.33%
+      0     0   8.00002e+08    72   3.69170e+09      Cuts: 96      218   78.33%
+*     0+    0                       3.66670e+09   8.00002e+08            78.18%
+*     0+    0                       2.90003e+09   8.00002e+08            72.41%
+      0     2   8.00002e+08    72   2.90003e+09   8.00002e+08      218   72.41%
+Elapsed time = 0.68 sec. (36.24 ticks, tree = 0.02 MB, solutions = 3)
+*     6+    3                       2.83336e+09   8.00002e+08            71.76%
+
+Implied bound cuts applied:  17
+Flow cuts applied:  18
+Mixed integer rounding cuts applied:  91
+Gomory fractional cuts applied:  7
+
+Root node processing (before b&c):
+  Real time             =    0.62 sec. (36.05 ticks)
+Parallel b&c, 14 threads:
+  Real time             =    1.67 sec. (3.41 ticks)
+  Sync time (average)   =    1.51 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =    2.29 sec. (39.46 ticks)
+
+MIP - node limit exceeded:  Objective = 2.8333590667e+09
+Solution time = 0.00 sec.  Iterations = 304  Nodes = 9
+
+@05 7200

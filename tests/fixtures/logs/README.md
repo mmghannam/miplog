@@ -37,6 +37,21 @@ detects infeasibility in presolve. Validates `Status::Infeasible`
 classification and that parsers don't blow up when there's no primal
 or dual to extract.
 
+### `<solver>-concat.log` — Mittelmann-style bundled runs
+
+Three runs of the same solver on different instances, stitched with
+`@01 modified/<instance>.mps.gz ===========` start markers and
+`@05 7200` end markers (the format the [Mittelmann benchmarks][m] use to
+package 240 instance solves into one file per solver). Exercises
+`orlog::input::split_concatenated`, which yields a `Vec<ConcatEntry>`
+each parser then handles independently.
+
+The three runs are: p0201 (Optimal), glass4 with time limit (TimeLimit),
+glass4 with node limit (OtherLimit) — covers the three distinct status
+classes in a single bundle.
+
+[m]: https://plato.asu.edu/ftp/milp_log12/
+
 ### `<solver>-lp.log` — pure LP (no integer variables)
 
 A 3-variable continuous LP with known optimum −5. Exercises the

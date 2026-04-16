@@ -1,5 +1,5 @@
 
-Gurobi 12.0.3 (mac64[arm]) logging started Thu Apr 16 09:50:33 2026
+Gurobi 12.0.3 (mac64[arm]) logging started Thu Apr 16 10:30:38 2026
 
 Set parameter LogFile to value "/Users/ghannam/projects/orlog/tests/fixtures/logs/gurobi-timelimit.log"
 Set parameter TimeLimit to value 2
@@ -58,21 +58,11 @@ H 4991  2461                    1.633347e+09 8.0000e+08  51.0%   5.3    0s
 H 6345  3073                    1.633346e+09 8.0000e+08  51.0%   4.8    0s
 H 9036  4289                    1.625014e+09 8.0000e+08  50.8%   4.4    0s
 H 9659  4463                    1.550013e+09 8.0000e+08  48.4%   4.3    0s
-H42691 17945                    1.500013e+09 8.6886e+08  42.1%   4.6    1s
 
-Cutting planes:
-  Gomory: 8
-  Implied bound: 7
-  Clique: 1
-  MIR: 7
-  Flow cover: 39
-  RLT: 2
-  Relax-and-lift: 11
-
-Explored 43329 nodes (207277 simplex iterations) in 2.00 seconds (3.56 work units)
+Explored 38814 nodes (172316 simplex iterations) in 2.00 seconds (1.84 work units)
 Thread count was 14 (of 14 available processors)
 
-Solution count 10: 1.50001e+09 1.55001e+09 1.62501e+09 ... 1.93335e+09
+Solution count 10: 1.55001e+09 1.62501e+09 1.63335e+09 ... 1.96668e+09
 
 Time limit reached
-Best objective 1.500012650000e+09, best bound 8.729910757402e+08, gap 41.8011%
+Best objective 1.550012650000e+09, best bound 8.000062000000e+08, gap 48.3871%

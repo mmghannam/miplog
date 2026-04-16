@@ -2,7 +2,7 @@ Welcome to the CBC MILP Solver
 Version: 2.10.13 
 Build Date: Mar 11 2026 
 
-command line - cbc /Users/ghannam/projects/orlog/tests/fixtures/infeasible.mps solve solution /var/folders/vn/lylbxb6n3g98kkqt5_qvrv6w0000gp/T/tmp3c3cuwam.sol (default strategy 1)
+command line - cbc /Users/ghannam/projects/orlog/tests/fixtures/infeasible.mps solve solution /var/folders/vn/lylbxb6n3g98kkqt5_qvrv6w0000gp/T/tmphkh837he.sol (default strategy 1)
 At line 1 NAME          infeasible
 At line 4 ROWS
 At line 8 COLUMNS

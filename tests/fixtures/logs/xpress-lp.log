@@ -1,4 +1,4 @@
-FICO Xpress v9.8.1, Community, solve started 9:50:48, Apr 16, 2026
+FICO Xpress v9.8.1, Community, solve started 10:30:55, Apr 16, 2026
 Heap usage: 428KB (peak 428KB, 112KB system)
 Minimizing LP tinylp using up to 14 threads and up to 24GB memory, with these control settings:
 OUTPUTLOG = 1

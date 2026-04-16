@@ -2,7 +2,7 @@ Welcome to the CBC MILP Solver
 Version: 2.10.13 
 Build Date: Mar 11 2026 
 
-command line - cbc /Users/ghannam/projects/orlog/tests/fixtures/tinylp.mps solve solution /var/folders/vn/lylbxb6n3g98kkqt5_qvrv6w0000gp/T/tmp_84d9lkt.sol (default strategy 1)
+command line - cbc /Users/ghannam/projects/orlog/tests/fixtures/tinylp.mps solve solution /var/folders/vn/lylbxb6n3g98kkqt5_qvrv6w0000gp/T/tmpy61eul_4.sol (default strategy 1)
 At line 1 NAME          tinylp
 At line 10 ROWS
 At line 14 COLUMNS

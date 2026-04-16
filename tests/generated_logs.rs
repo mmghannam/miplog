@@ -315,6 +315,59 @@ fn infeasible_fixtures_parse_as_infeasible() {
     eprintln!("verified {total} infeasible fixtures");
 }
 
+/// `*-concat.log`: Mittelmann-style bundles with three instance runs each
+/// (p0201 optimal, glass4 time-limited, glass4 node-limited). Verifies
+/// `input::split_concatenated` produces the expected entries and that each
+/// chunk parses to its expected status.
+#[test]
+fn concat_fixtures_split_and_parse() {
+    let dir = Path::new(LOGS_DIR);
+    if !dir.exists() {
+        return;
+    }
+    let mut total = 0;
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        let n = path.file_name().unwrap().to_string_lossy().into_owned();
+        if !n.ends_with("-concat.log") {
+            continue;
+        }
+        total += 1;
+        let text = std::fs::read_to_string(&path).unwrap();
+        let entries = orlog::input::split_concatenated(&text);
+        assert_eq!(
+            entries.len(),
+            3,
+            "{n}: expected 3 concat entries, got {}",
+            entries.len(),
+        );
+
+        // Entry order matches build_concat_fixtures(): p0201, glass4-tl, glass4-nl.
+        let want = [
+            ("p0201.mps.gz", Status::Optimal),
+            ("glass4.mps.gz", Status::TimeLimit),
+            ("glass4.mps.gz", Status::OtherLimit),
+        ];
+        for (i, (expected_inst, expected_status)) in want.iter().enumerate() {
+            let entry = &entries[i];
+            assert!(
+                entry.instance.ends_with(expected_inst),
+                "{n}[{i}]: instance {:?} doesn't end with {expected_inst}",
+                entry.instance,
+            );
+            let log = autodetect(&entry.text)
+                .unwrap_or_else(|e| panic!("{n}[{i}]: parse failed: {e}"));
+            assert_eq!(
+                log.termination.status, *expected_status,
+                "{n}[{i}] ({}): expected {expected_status:?}, got {:?}",
+                entry.instance, log.termination.status,
+            );
+        }
+    }
+    assert!(total >= 4, "expected ≥4 -concat.log fixtures, found {total}");
+    eprintln!("verified {total} concatenated fixtures");
+}
+
 /// `*-lp.log`: pure-LP runs (no integer variables). Should classify as
 /// `Status::Optimal` and have a primal objective. No B&B → progress table
 /// can be empty, no cuts expected.

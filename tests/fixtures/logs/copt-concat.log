@@ -1,3 +1,83 @@
+@01 modified/p0201.mps.gz ===========
+Setting log file to /Users/ghannam/projects/orlog/tests/fixtures/logs/copt.log
+Reading from '/Users/ghannam/projects/orlog/tests/fixtures/p0201.mps'
+Reading finished (0.00s)
+No license found. The size is limited to 2000 variables and 2000 constraints
+Please apply for a license from www.shanshu.ai/copt
+
+Model fingerprint: a316420b
+
+Using Cardinal Optimizer v8.0.3 on macOS (15.6 Build 24G84 - arm64)
+The CPU model is Apple M4 Pro
+Hardware has 14 physical cores and 14 logical cores. Using instruction set ARMV8 (30)
+Minimizing a MIP problem
+
+The original problem has:
+    133 rows, 201 columns and 1923 non-zero elements
+    201 binaries
+
+Starting the MIP solver with 14 threads and 32 tasks
+
+Presolving the problem
+
+The presolved problem has:
+    107 rows, 180 columns and 1482 non-zero elements
+    177 binaries and 3 integers
+
+Problem info:
+    Range of matrix coefficients:    [1e+00,2e+01]
+    Range of rhs coefficients:       [1e+00,5e+01]
+    Range of bound coefficients:     [1e+00,3e+00]
+    Range of cost coefficients:      [5e+01,2e+03]
+    Density of cost:                     100.0%
+
+     Nodes    Active  LPit/n  IntInf     BestBound  BestSolution     Gap   Time
+         0         1      --       0  0.000000e+00            --     Inf  0.01s
+H        0         1      --       0  0.000000e+00  1.224000e+04 100.00%  0.02s
+H        0         1      --       0  0.000000e+00  1.201000e+04 100.00%  0.02s
+H        0         1      --       0  0.000000e+00  1.156000e+04 100.00%  0.02s
+         0         1      --      22  7.075000e+03  1.156000e+04  38.80%  0.03s
+H        0         1      --      22  7.075000e+03  9.960000e+03  28.97%  0.03s
+H        0         1      --      22  7.075000e+03  9.045000e+03  21.78%  0.03s
+H        0         1      --      22  7.075000e+03  8.595000e+03  17.68%  0.03s
+H        0         1      --      22  7.075000e+03  8.195000e+03  13.67%  0.03s
+H        0         1      --      22  7.075000e+03  7.915000e+03  10.61%  0.04s
+         0         1      --      22  7.075000e+03  7.915000e+03  10.61%  0.04s
+         0         1      --      24  7.125000e+03  7.915000e+03  9.981%  0.05s
+         0         1      --      24  7.125000e+03  7.915000e+03  9.981%  0.05s
+         0         1      --      24  7.125000e+03  7.915000e+03  9.981%  0.05s
+H        0         0      --      24  7.152059e+03  7.715000e+03  7.297%  0.06s
+
+     Nodes    Active  LPit/n  IntInf     BestBound  BestSolution     Gap   Time
+H        0         0      --      24  7.152059e+03  7.615000e+03  6.079%  0.06s
+         1         2    16.0      24  7.152059e+03  7.615000e+03  6.079%  0.06s
+         2         2    13.0      24  7.211341e+03  7.615000e+03  5.301%  0.06s
+         3         3    16.0      15  7.211341e+03  7.615000e+03  5.301%  0.06s
+         4         2    14.2      44  7.245000e+03  7.615000e+03  4.859%  0.06s
+         5         3    12.4      12  7.245000e+03  7.615000e+03  4.859%  0.06s
+         6         5    12.8      14  7.245000e+03  7.615000e+03  4.859%  0.06s
+         7         0    13.1      12  7.305000e+03  7.615000e+03  4.071%  0.07s
+         8         1    11.6      10  7.305000e+03  7.615000e+03  4.071%  0.07s
+         9         2    11.0      12  7.305000e+03  7.615000e+03  4.071%  0.07s
+        10         3    10.8      24  7.305000e+03  7.615000e+03  4.071%  0.07s
+        20         0     9.2      32  7.615000e+03  7.615000e+03  0.000%  0.08s
+        20         0     9.2      32  7.615000e+03  7.615000e+03  0.000%  0.08s
+
+Best solution   : 7615.000000000
+Best bound      : 7615.000000000
+Best gap        : 0.0000%
+Solve time      : 0.08
+Solve node      : 20
+MIP status      : solved
+Solution status : integer optimal (relative gap limit 0.0001)
+
+Violations      :     absolute     relative
+    bounds      :            0            0
+    rows        :            0            0
+    integrality :            0
+
+@05 7200
+@01 modified/glass4.mps.gz ===========
 Setting log file to /Users/ghannam/projects/orlog/tests/fixtures/logs/copt-timelimit.log
 Setting parameter 'TimeLimit' to 2
 Reading from '/Users/ghannam/projects/orlog/tests/fixtures/glass4.mps'
@@ -140,3 +220,87 @@ Violations      :     absolute     relative
     bounds      :            0            0
     rows        :            0            0
     integrality :            0
+
+@05 7200
+@01 modified/glass4.mps.gz ===========
+Setting log file to /Users/ghannam/projects/orlog/tests/fixtures/logs/copt-nodelimit.log
+Setting parameter 'NodeLimit' to 5
+Reading from '/Users/ghannam/projects/orlog/tests/fixtures/glass4.mps'
+Reading switch to free MPS format
+Reading finished (0.00s)
+No license found. The size is limited to 2000 variables and 2000 constraints
+Please apply for a license from www.shanshu.ai/copt
+
+Model fingerprint: e7180ce4
+
+Using Cardinal Optimizer v8.0.3 on macOS (15.6 Build 24G84 - arm64)
+The CPU model is Apple M4 Pro
+Hardware has 14 physical cores and 14 logical cores. Using instruction set ARMV8 (30)
+Minimizing a MIP problem
+
+The original problem has:
+    396 rows, 322 columns and 1815 non-zero elements
+    302 binaries
+
+Starting the MIP solver with 14 threads and 32 tasks
+
+Presolving the problem
+
+The presolved problem has:
+    392 rows, 317 columns and 1799 non-zero elements
+    298 binaries
+
+Problem info:
+    Range of matrix coefficients:    [1e+00,8e+06]
+    Range of rhs coefficients:       [1e+00,8e+06]
+    Range of bound coefficients:     [1e+00,8e+02]
+    Range of cost coefficients:      [1e+00,1e+06]
+    Density of cost:                     6.0%
+
+     Nodes    Active  LPit/n  IntInf     BestBound  BestSolution     Gap   Time
+         0         1      --       0  8.000024e+08            --     Inf  0.01s
+         0         1      --      72  8.000024e+08            --     Inf  0.03s
+         0         1      --      72  8.000024e+08            --     Inf  0.08s
+         0         1      --      72  8.000025e+08            --     Inf  0.08s
+         0         1      --      72  8.000025e+08            --     Inf  0.08s
+         0         1      --      58  8.000036e+08            --     Inf  0.08s
+         0         1      --      58  8.000037e+08            --     Inf  0.08s
+         0         1      --      59  8.000038e+08            --     Inf  0.08s
+         0         1      --      65  8.000038e+08            --     Inf  0.08s
+         0         1      --      60  8.000039e+08            --     Inf  0.09s
+         0         1      --      62  8.000040e+08            --     Inf  0.09s
+         0         1      --      62  8.000040e+08            --     Inf  0.09s
+         0         1      --      63  8.000040e+08            --     Inf  0.09s
+         0         1      --      61  8.000040e+08            --     Inf  0.09s
+         0         1      --      55  8.000041e+08            --     Inf  0.09s
+
+     Nodes    Active  LPit/n  IntInf     BestBound  BestSolution     Gap   Time
+         0         1      --      55  8.000042e+08            --     Inf  0.10s
+         0         1      --      57  8.000042e+08            --     Inf  0.10s
+         0         1      --      59  8.000042e+08            --     Inf  0.10s
+         0         1      --      64  8.000042e+08            --     Inf  0.10s
+         0         1      --      71  8.000043e+08            --     Inf  0.10s
+         0         1      --      80  8.000044e+08            --     Inf  0.10s
+H        0         0      --      80  8.000045e+08  3.750035e+09  78.67%  0.16s
+H        0         0      --      80  8.000045e+08  3.100031e+09  74.19%  0.19s
+         1         2   683.0      80  8.000045e+08  3.100031e+09  74.19%  0.19s
+         2         2   370.0      67  8.000045e+08  3.100031e+09  74.19%  0.19s
+         3         4   265.7      60  8.000045e+08  3.100031e+09  74.19%  0.19s
+         4         4   218.5      57  8.000045e+08  3.100031e+09  74.19%  0.19s
+         5         6   185.8      66  8.000045e+08  3.100031e+09  74.19%  0.19s
+         5         6   185.8      66  8.000045e+08  3.100031e+09  74.19%  0.19s
+
+Best solution   : 3100031233.333324432
+Best bound      : 800004511.188545942
+Best gap        : 74.1937%
+Solve time      : 0.19
+Solve node      : 5
+MIP status      : stopped (node limit reached)
+Solution status : integer feasible
+
+Violations      :     absolute     relative
+    bounds      :  2.49461e-15  2.49461e-15
+    rows        :  2.79397e-09   2.9976e-15
+    integrality :   2.9976e-15
+
+@05 7200

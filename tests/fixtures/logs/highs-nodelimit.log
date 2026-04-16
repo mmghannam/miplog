@@ -42,13 +42,13 @@ Solving report
   Primal bound      2953867673.82
   Dual bound        800004746.472
   Gap               72.92% (tolerance: 0.01%)
-  P-D integral      0.591194379311
+  P-D integral      0.571153185515
   Solution status   feasible
                     2953867673.82 (objective)
                     0 (bound viol.)
                     2.22044604925e-16 (int. viol.)
                     0 (row viol.)
-  Timing            1.15
+  Timing            1.13
   Max sub-MIP depth 6
   Nodes             5
   Repair LPs        0

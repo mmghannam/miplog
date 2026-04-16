@@ -1,4 +1,4 @@
-FICO Xpress v9.8.1, Community, solve started 9:50:28, Apr 16, 2026
+FICO Xpress v9.8.1, Community, solve started 10:30:31, Apr 16, 2026
 Heap usage: 489KB (peak 489KB, 57KB system)
 Minimizing MILP p0201 using up to 14 threads and up to 24GB memory, with these control settings:
 OUTPUTLOG = 1
@@ -88,8 +88,8 @@ Cut elements in the matrix : 1436
 Uncrunching matrix
 Final MIP objective                   : 7.615000000000000e+03
 Final MIP bound                       : 7.615000000000000e+03
-  Solution time / primaldual integral :      0.10s/ 20.593985%
-  Work / work units per second        :      0.32 /      3.18
+  Solution time / primaldual integral :      0.13s/ 23.695215%
+  Work / work units per second        :      0.32 /      2.45
   Number of solutions found / nodes   :         5 /         0
   Max primal violation      (abs/rel) :       0.0 /       0.0
   Max integer violation     (abs    ) :       0.0

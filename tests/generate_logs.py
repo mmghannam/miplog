@@ -280,6 +280,30 @@ def main():
         (TINYLP, None, None, "-lp"),
     ]
 
+    # Stitched after individual suites finish — wraps each solver's existing
+    # fixtures with Mittelmann-style `@01 modified/<inst>.mps.gz ==========`
+    # markers and `@05 N` end-of-run markers.
+    def build_concat_fixtures():
+        components = [
+            ("p0201", "p0201.mps.gz", ".log"),
+            ("glass4-tl", "glass4.mps.gz", "-timelimit.log"),
+            ("glass4-nl", "glass4.mps.gz", "-nodelimit.log"),
+        ]
+        for solver in GENERATORS:
+            parts = []
+            for tag, instance_path, suffix in components:
+                src = args.out_dir / f"{solver}{suffix}"
+                if not src.exists():
+                    continue
+                parts.append(f"@01 modified/{instance_path} ===========\n")
+                parts.append(src.read_text())
+                parts.append("\n@05 7200\n")
+            if not parts:
+                continue
+            out = args.out_dir / f"{solver}-concat.log"
+            out.write_text("".join(parts))
+            print(f"  ✓ {solver:12s}-concat  {out.stat().st_size:>8,} bytes")
+
     for mps, time_limit, node_limit, suffix in suites:
         if not mps.exists():
             print(f"skip {mps.name}: not found")
@@ -316,6 +340,9 @@ def main():
         print(f"\nGenerated {len(generated)}/{len(GENERATORS)}: {', '.join(generated)}")
         if skipped:
             print(f"Skipped: {', '.join(skipped)}")
+
+    print("\n=== Mittelmann-style concatenated fixtures ===")
+    build_concat_fixtures()
 
 
 if __name__ == "__main__":
