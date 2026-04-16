@@ -132,22 +132,53 @@ fn gap_sparkline(t: &ProgressTable) -> Option<String> {
     if t.is_empty() {
         return None;
     }
-    // Collect (time, effective gap) for rows that have one.
+    // Collect (time, effective gap) for rows. Three cases:
+    //   1) gap reported → use it
+    //   2) gap missing but both bounds known → derive
+    //   3) gap missing because dual is unbounded ("inf"/"-inf"/null) but a
+    //      primal exists → treat as "infinite gap" placeholder so the
+    //      trajectory starts at the top of the chart instead of dropping
+    //      the row and losing the early-search shape
     let mut pts: Vec<(f64, f64)> = Vec::new();
+    let mut has_inf_marker = false;
     for i in 0..t.len() {
-        let g = match t.gap[i] {
-            Some(g) => Some(g),
+        let mut g = match t.gap[i] {
+            Some(g) if g.is_finite() => Some(g),
+            Some(_) => None, // gap was reported as inf/NaN — fall through
             None => match (t.primal[i], t.dual[i]) {
-                (Some(p), Some(d)) => Some((p - d).abs() / p.abs().max(1e-10)),
+                (Some(p), Some(d)) if d.is_finite() && p.is_finite() => {
+                    Some((p - d).abs() / p.abs().max(1e-10))
+                }
                 _ => None,
             },
         };
+        // Rows with a primal but unreliable dual (None / ±inf) → "infinite gap"
+        // sentinel so the trajectory starts at the top of the chart instead of
+        // dropping the row and losing the early-search shape.
+        if g.is_none() && t.primal[i].is_some() {
+            has_inf_marker = true;
+            g = Some(f64::INFINITY);
+        }
         if let Some(g) = g {
             pts.push((t.time_seconds[i], g));
         }
     }
     if pts.len() < 3 {
         return None;
+    }
+    if has_inf_marker {
+        // Replace `inf` placeholders with max(observed_finite, 1.0) so they
+        // render as a full bar without warping the rest of the scale.
+        let max_finite = pts
+            .iter()
+            .filter_map(|(_, g)| g.is_finite().then_some(*g))
+            .fold(0.0f64, f64::max)
+            .max(1.0);
+        for (_, g) in pts.iter_mut() {
+            if !g.is_finite() {
+                *g = max_finite;
+            }
+        }
     }
     // Time-based sampling, with a fallback to index-based when all rows have
     // (near-)identical timestamps — common for sub-second solves where the
