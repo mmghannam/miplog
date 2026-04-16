@@ -113,8 +113,224 @@ impl LogParser for CplexParser {
             log.bounds.gap = *log.progress.gap.last().unwrap_or(&None);
         }
 
+        // Root LP dual bound: the first progress row's Best Bound is the
+        // LP relaxation bound at the root (before cuts). CPLEX reports it
+        // in the "Objective" column for the first few rows.
+        for i in 0..log.progress.len() {
+            if let Some(d) = log.progress.dual[i] {
+                if d != 0.0 {
+                    log.bounds.root_dual = Some(d);
+                    break;
+                }
+            }
+        }
+
+        // First incumbent: "Found incumbent of value X after T sec."
+        if let Some(c) = re_first_incumbent().captures(text) {
+            log.bounds.first_primal = c[1].parse().ok();
+            log.bounds.first_primal_time_seconds = c[2].parse().ok();
+        }
+
+        // Presolve time: "Presolve time = 0.00 sec. (2.20 ticks)"
+        // Sum across the multiple presolve-time lines (CPLEX prints one per
+        // presolve phase); gives total presolve wall time.
+        let mut total_presolve = 0.0f64;
+        let mut any = false;
+        for c in re_presolve_time().captures_iter(text) {
+            if let Ok(t) = c[1].parse::<f64>() {
+                total_presolve += t;
+                any = true;
+            }
+        }
+        if any {
+            log.timing.presolve_seconds = Some(total_presolve);
+        }
+
+        populate_other_data(text, &mut log);
+
         Ok(log)
     }
+}
+
+fn populate_other_data(text: &str, log: &mut SolverLog) {
+    if let Some(v) = parse_search_config(text) {
+        log.other_data.push(NamedValue::new("cplex.search_config", v));
+    }
+    if let Some(v) = parse_integer_breakdown(text) {
+        log.other_data.push(NamedValue::new("cplex.variable_types_after_presolve", v));
+    }
+    if let Some(v) = parse_presolve_details(text) {
+        log.other_data.push(NamedValue::new("cplex.presolve_details", v));
+    }
+    if let Some(v) = parse_probing(text) {
+        log.other_data.push(NamedValue::new("cplex.probing", v));
+    }
+    if let Some(v) = parse_clique_table(text) {
+        log.other_data.push(NamedValue::new("cplex.clique_table_members", v));
+    }
+    if let Some(v) = parse_heuristic_solutions(text) {
+        log.other_data.push(NamedValue::new("cplex.incumbents", v));
+    }
+    if let Some(v) = parse_ticks(text) {
+        log.other_data.push(NamedValue::new("cplex.deterministic_ticks", v));
+    }
+    if let Some(v) = parse_timing_breakdown(text) {
+        log.other_data.push(NamedValue::new("cplex.timing_breakdown", v));
+    }
+}
+
+/// Search config: MIP emphasis, search method, parallel mode, threads.
+fn parse_search_config(text: &str) -> Option<serde_json::Value> {
+    let mut obj = serde_json::Map::new();
+    if let Some(c) = Regex::new(r"MIP emphasis:\s+(.+?)\.").unwrap().captures(text) {
+        obj.insert("mip_emphasis".into(), serde_json::Value::String(c[1].trim().to_string()));
+    }
+    if let Some(c) = Regex::new(r"MIP search method:\s+(.+?)\.").unwrap().captures(text) {
+        obj.insert("search_method".into(), serde_json::Value::String(c[1].trim().to_string()));
+    }
+    if let Some(c) = Regex::new(
+        r"Parallel mode:\s+([^,]+),\s+using up to (\d+) threads?",
+    )
+    .unwrap()
+    .captures(text)
+    {
+        obj.insert("parallel_mode".into(), serde_json::Value::String(c[1].trim().to_string()));
+        obj.insert("threads".into(), parse_f64_json(&c[2]));
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+/// "Reduced MIP has 183 binaries, 3 generals, 0 SOSs, and 0 indicators."
+fn parse_integer_breakdown(text: &str) -> Option<serde_json::Value> {
+    let re = Regex::new(
+        r"Reduced MIP has (\d+) binaries,\s+(\d+) generals,\s+(\d+) SOSs,\s+and\s+(\d+) indicators",
+    )
+    .unwrap();
+    let c = re.captures_iter(text).last()?;
+    let mut obj = serde_json::Map::new();
+    obj.insert("binaries".into(), parse_f64_json(&c[1]));
+    obj.insert("generals".into(), parse_f64_json(&c[2]));
+    obj.insert("sos".into(), parse_f64_json(&c[3]));
+    obj.insert("indicators".into(), parse_f64_json(&c[4]));
+    Some(serde_json::Value::Object(obj))
+}
+
+fn parse_presolve_details(text: &str) -> Option<serde_json::Value> {
+    let mut obj = serde_json::Map::new();
+    let mut eliminated_rows = 0u64;
+    let mut eliminated_cols = 0u64;
+    for c in Regex::new(r"MIP Presolve eliminated (\d+) rows? and (\d+) columns?")
+        .unwrap()
+        .captures_iter(text)
+    {
+        eliminated_rows += c[1].parse::<u64>().unwrap_or(0);
+        eliminated_cols += c[2].parse::<u64>().unwrap_or(0);
+    }
+    if eliminated_rows > 0 || eliminated_cols > 0 {
+        obj.insert("eliminated_rows".into(), serde_json::Value::from(eliminated_rows));
+        obj.insert("eliminated_cols".into(), serde_json::Value::from(eliminated_cols));
+    }
+    if let Some(c) = Regex::new(r"MIP Presolve modified (\d+) coefficients?")
+        .unwrap()
+        .captures_iter(text)
+        .last()
+    {
+        obj.insert("modified_coefficients".into(), parse_f64_json(&c[1]));
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_probing(text: &str) -> Option<serde_json::Value> {
+    let mut obj = serde_json::Map::new();
+    if let Some(c) = Regex::new(r"Probing time\s*=\s*([\d.]+)\s+sec")
+        .unwrap()
+        .captures_iter(text)
+        .last()
+    {
+        obj.insert("time_seconds".into(), parse_f64_json(&c[1]));
+    }
+    if let Some(c) = Regex::new(r"Probing changed sense of (\d+) constraints?")
+        .unwrap()
+        .captures(text)
+    {
+        obj.insert("constraints_sense_changed".into(), parse_f64_json(&c[1]));
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_clique_table(text: &str) -> Option<serde_json::Value> {
+    let c = Regex::new(r"Clique table members:\s+(\d+)").unwrap().captures(text)?;
+    Some(parse_f64_json(&c[1]))
+}
+
+fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
+    // "Found incumbent of value X after T sec."
+    let re = Regex::new(
+        r"Found incumbent of value\s+([\d.eE+\-]+)\s+after\s+([\d.]+)\s+sec",
+    )
+    .unwrap();
+    let mut arr: Vec<serde_json::Value> = Vec::new();
+    for c in re.captures_iter(text) {
+        let mut o = serde_json::Map::new();
+        o.insert("value".into(), parse_f64_json(&c[1]));
+        o.insert("time_seconds".into(), parse_f64_json(&c[2]));
+        arr.push(serde_json::Value::Object(o));
+    }
+    (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
+}
+
+/// CPLEX's deterministic ticks — a workload counter that's hardware-independent.
+/// Useful for apples-to-apples comparison across machines.
+fn parse_ticks(text: &str) -> Option<serde_json::Value> {
+    let c = Regex::new(r"Total \(root\+branch&cut\)\s*=\s*[\d.]+\s+sec\.\s+\(([\d.]+)\s+ticks\)")
+        .unwrap()
+        .captures(text)?;
+    Some(parse_f64_json(&c[1]))
+}
+
+/// "Root node processing (before b&c): Real time = 0.04 sec."
+/// "Parallel b&c, 14 threads: Real time = 0.00 sec."
+fn parse_timing_breakdown(text: &str) -> Option<serde_json::Value> {
+    let mut obj = serde_json::Map::new();
+    if let Some(c) = Regex::new(
+        r"Root node processing \(before b&c\):\s*\n\s*Real time\s*=\s*([\d.]+)",
+    )
+    .unwrap()
+    .captures(text)
+    {
+        obj.insert("root_node_time".into(), parse_f64_json(&c[1]));
+    }
+    if let Some(c) = Regex::new(
+        r"Parallel b&c,\s+\d+\s+threads?:\s*\n\s*Real time\s*=\s*([\d.]+)",
+    )
+    .unwrap()
+    .captures(text)
+    {
+        obj.insert("parallel_bc_time".into(), parse_f64_json(&c[1]));
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_f64_json(s: &str) -> serde_json::Value {
+    if let Ok(v) = s.trim().parse::<f64>() {
+        if let Some(n) = serde_json::Number::from_f64(v) {
+            return serde_json::Value::Number(n);
+        }
+    }
+    serde_json::Value::String(s.trim().to_string())
+}
+
+fn re_first_incumbent() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(r"Found incumbent of value\s+([\d.eE+\-]+)\s+after\s+([\d.]+)\s+sec")
+            .unwrap()
+    })
+}
+
+fn re_presolve_time() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"Presolve time\s*=\s*([\d.]+)\s+sec").unwrap())
 }
 
 fn parse_status(text: &str, log: &mut SolverLog) {
@@ -358,8 +574,10 @@ fn re_sol_pool() -> &'static Regex {
 }
 
 fn re_cut_line() -> &'static Regex {
+    // CPLEX prints these cut lines unindented (or with leading whitespace in
+    // some versions) — use `\s*` so both variants match.
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| Regex::new(r"(?m)^\s+(.+?)\s+applied:\s+([\d,]+)").unwrap())
+    R.get_or_init(|| Regex::new(r"(?m)^\s*(.+?)\s+cuts applied:\s+([\d,]+)").unwrap())
 }
 
 fn re_elapsed() -> &'static Regex {
@@ -422,6 +640,6 @@ Solution time = 1551.53 sec.  Iterations = 4932561  Nodes = 51737
         assert_eq!(log.presolve.rows_after, Some(4665));
         assert_eq!(log.progress.len(), 4); // 2 incumbent + 1 standard + 1 after elapsed
         eprintln!("cuts: {:?}", log.cuts);
-        assert_eq!(*log.cuts.get("Gomory fractional cuts").unwrap_or(&0), 21);
+        assert_eq!(*log.cuts.get("Gomory fractional").unwrap_or(&0), 21);
     }
 }
