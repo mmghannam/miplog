@@ -1,4 +1,4 @@
-//! CBC (COIN-OR Branch and Cut) log parser. Tested against CBC 2.9.8 output.
+//! CBC (COIN-OR Branch and Cut) log parser. Tested against CBC 2.9–2.10.
 
 use crate::{schema::*, LogParser, ParseError, Solver};
 use regex::Regex;
@@ -93,8 +93,147 @@ impl LogParser for CbcParser {
         // Progress: Cbc0010I lines + Cbc0004I (incumbent)
         log.progress = parse_progress(text);
 
+        // CBC doesn't print a separate "Best bound" line on optimal runs —
+        // but optimality means primal == dual by definition. Mirror primal
+        // into dual so cross-solver tools can treat the field uniformly.
+        if log.termination.status == Status::Optimal && log.bounds.dual.is_none() {
+            log.bounds.dual = log.bounds.primal;
+            log.bounds.gap = Some(0.0);
+        }
+
+        // Max depth: "Maximum depth 10"
+        if let Some(c) = re_max_depth().captures(text) {
+            log.tree.max_depth = c[1].parse().ok();
+        }
+
+        // Root LP after cuts: "Cuts at root node changed objective from 7155 to 7432.56"
+        if let Some(c) = re_root_dual().captures(text) {
+            log.bounds.root_dual = c[2].parse().ok();
+        }
+
+        // First feasible solution from feasibility pump:
+        // "Integer solution of 8115 found by feasibility pump after 0 iterations and 0 nodes (0.03 seconds)"
+        if let Some(c) = re_first_feasible().captures(text) {
+            log.bounds.first_primal = c[1].parse().ok();
+            log.bounds.first_primal_time_seconds = c[2].parse().ok();
+        }
+
+        populate_other_data(text, &mut log);
+
         Ok(log)
     }
+}
+
+fn populate_other_data(text: &str, log: &mut SolverLog) {
+    if let Some(v) = parse_cut_details(text) {
+        log.other_data.push(NamedValue::new("cbc.cut_generators", v));
+    }
+    if let Some(v) = parse_strong_branching(text) {
+        log.other_data.push(NamedValue::new("cbc.strong_branching", v));
+    }
+    if let Some(v) = parse_root_lp(text) {
+        log.other_data.push(NamedValue::new("cbc.root_lp", v));
+    }
+    if let Some(v) = parse_continuous_obj(text) {
+        log.other_data.push(NamedValue::new("cbc.continuous_objective", v));
+    }
+}
+
+/// Parse the per-cut-generator detail lines:
+///   Cbc0014I Cut generator 0 (Probing) - 5 row cuts ... 0 column cuts (1 active)  in 0.034 seconds
+fn parse_cut_details(text: &str) -> Option<serde_json::Value> {
+    let re = Regex::new(
+        r"Cbc0014I Cut generator \d+ \(([A-Za-z0-9]+)\)\s*-\s*(\d+) row cuts.*?(\d+) column cuts \((\d+) active\)\s+in\s+([\d.]+)\s+seconds",
+    )
+    .unwrap();
+    let mut arr: Vec<serde_json::Value> = Vec::new();
+    for c in re.captures_iter(text) {
+        let mut o = serde_json::Map::new();
+        o.insert("name".into(), serde_json::Value::String(c[1].to_string()));
+        o.insert("row_cuts".into(), parse_f64_json_cbc(&c[2]));
+        o.insert("column_cuts".into(), parse_f64_json_cbc(&c[3]));
+        o.insert("active".into(), parse_f64_json_cbc(&c[4]));
+        o.insert("time_seconds".into(), parse_f64_json_cbc(&c[5]));
+        arr.push(serde_json::Value::Object(o));
+    }
+    (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
+}
+
+/// "Cbc0032I Strong branching done 1270 times (27431 iterations), fathomed 10 nodes and fixed 24 variables"
+fn parse_strong_branching(text: &str) -> Option<serde_json::Value> {
+    let c = Regex::new(
+        r"Strong branching done (\d+) times \((\d+) iterations\), fathomed (\d+) nodes and fixed (\d+) variables",
+    )
+    .unwrap()
+    .captures(text)?;
+    let mut o = serde_json::Map::new();
+    o.insert("times".into(), parse_f64_json_cbc(&c[1]));
+    o.insert("iterations".into(), parse_f64_json_cbc(&c[2]));
+    o.insert("fathomed_nodes".into(), parse_f64_json_cbc(&c[3]));
+    o.insert("fixed_variables".into(), parse_f64_json_cbc(&c[4]));
+    Some(serde_json::Value::Object(o))
+}
+
+/// "At root node, 10 cuts changed objective from 7155 to 7432.5624 in 100 passes"
+fn parse_root_lp(text: &str) -> Option<serde_json::Value> {
+    let c = Regex::new(
+        r"At root node, (\d+) cuts changed objective from\s+([-\d.eE+]+)\s+to\s+([-\d.eE+]+)\s+in\s+(\d+)\s+passes",
+    )
+    .unwrap()
+    .captures(text)?;
+    let mut o = serde_json::Map::new();
+    o.insert("cuts".into(), parse_f64_json_cbc(&c[1]));
+    o.insert("objective_before".into(), parse_f64_json_cbc(&c[2]));
+    o.insert("objective_after".into(), parse_f64_json_cbc(&c[3]));
+    o.insert("passes".into(), parse_f64_json_cbc(&c[4]));
+    Some(serde_json::Value::Object(o))
+}
+
+/// "Continuous objective value is 6875 - 0.00 seconds"
+fn parse_continuous_obj(text: &str) -> Option<serde_json::Value> {
+    let c = Regex::new(
+        r"Continuous objective value is\s+([-\d.eE+]+)\s+-\s+([\d.]+)\s+seconds",
+    )
+    .unwrap()
+    .captures(text)?;
+    let mut o = serde_json::Map::new();
+    o.insert("value".into(), parse_f64_json_cbc(&c[1]));
+    o.insert("time_seconds".into(), parse_f64_json_cbc(&c[2]));
+    Some(serde_json::Value::Object(o))
+}
+
+fn parse_f64_json_cbc(s: &str) -> serde_json::Value {
+    if let Ok(v) = s.trim().parse::<f64>() {
+        if let Some(n) = serde_json::Number::from_f64(v) {
+            return serde_json::Value::Number(n);
+        }
+    }
+    serde_json::Value::String(s.trim().to_string())
+}
+
+fn re_max_depth() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"Maximum depth\s+(\d+)").unwrap())
+}
+
+fn re_root_dual() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(
+            r"At root node, \d+ cuts changed objective from\s+([-\d.eE+]+)\s+to\s+([-\d.eE+]+)",
+        )
+        .unwrap()
+    })
+}
+
+fn re_first_feasible() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(
+            r"Integer solution of\s+([-\d.eE+]+)\s+found by feasibility pump after \d+ iterations and \d+ nodes \(([\d.]+)\s+seconds\)",
+        )
+        .unwrap()
+    })
 }
 
 fn parse_status(text: &str, log: &mut SolverLog) {

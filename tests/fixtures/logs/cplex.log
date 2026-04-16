@@ -7,7 +7,7 @@ MIP Presolve modified 732 coefficients.
 Reduced MIP has 110 rows, 186 columns, and 1507 nonzeros.
 Reduced MIP has 183 binaries, 3 generals, 0 SOSs, and 0 indicators.
 Presolve time = 0.00 sec. (2.20 ticks)
-Found incumbent of value 13150.000000 after 0.00 sec. (4.15 ticks)
+Found incumbent of value 13150.000000 after 0.01 sec. (4.15 ticks)
 Probing changed sense of 6 constraints.
 Probing time = 0.00 sec. (0.65 ticks)
 Tried aggregator 1 time.
