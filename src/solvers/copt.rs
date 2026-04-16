@@ -87,8 +87,200 @@ impl LogParser for CoptParser {
         // Progress table
         log.progress = parse_progress(text);
 
+        // Derive Extended fields from progress + log text.
+
+        // First incumbent: first row with an event (H = heuristic) and a primal.
+        for i in 0..log.progress.len() {
+            if log.progress.event[i].is_some() {
+                if let Some(p) = log.progress.primal[i] {
+                    log.bounds.first_primal = Some(p);
+                    log.bounds.first_primal_time_seconds = Some(log.progress.time_seconds[i]);
+                    break;
+                }
+            }
+        }
+
+        // Root LP dual bound: first non-zero BestBound in the progress table.
+        for i in 0..log.progress.len() {
+            if let Some(d) = log.progress.dual[i] {
+                if d != 0.0 {
+                    log.bounds.root_dual = Some(d);
+                    break;
+                }
+            }
+        }
+
+        // Solutions found: count event rows in progress (each H is an incumbent).
+        let sols = log.progress.event.iter().filter(|e| e.is_some()).count() as u64;
+        if sols > 0 && log.tree.solutions_found.is_none() {
+            log.tree.solutions_found = Some(sols);
+        }
+
+        populate_other_data(text, &mut log);
+
         Ok(log)
     }
+}
+
+fn populate_other_data(text: &str, log: &mut SolverLog) {
+    if let Some(v) = parse_machine(text) {
+        log.other_data.push(NamedValue::new("copt.machine", v));
+    }
+    if let Some(v) = parse_run_config(text) {
+        log.other_data.push(NamedValue::new("copt.run_config", v));
+    }
+    if let Some(c) = re_fingerprint().captures(text) {
+        log.other_data.push(NamedValue::new(
+            "copt.model_fingerprint",
+            serde_json::Value::String(c[1].to_string()),
+        ));
+    }
+    let (before, after) = parse_variable_types(text);
+    if let Some(v) = before {
+        log.other_data.push(NamedValue::new("copt.variable_types_before_presolve", v));
+    }
+    if let Some(v) = after {
+        log.other_data.push(NamedValue::new("copt.variable_types_after_presolve", v));
+    }
+    if let Some(v) = parse_coefficient_ranges(text) {
+        log.other_data.push(NamedValue::new("copt.coefficient_ranges", v));
+    }
+    if let Some(v) = parse_violations(text) {
+        log.other_data.push(NamedValue::new("copt.solution_quality", v));
+    }
+}
+
+fn parse_machine(text: &str) -> Option<serde_json::Value> {
+    let mut obj = serde_json::Map::new();
+    if let Some(c) = Regex::new(r"Cardinal Optimizer\s+\S+\s+on\s+(.+)").unwrap().captures(text) {
+        obj.insert("platform".into(), serde_json::Value::String(c[1].trim().to_string()));
+    }
+    if let Some(c) = Regex::new(r"The CPU model is\s+(.+)").unwrap().captures(text) {
+        obj.insert("cpu".into(), serde_json::Value::String(c[1].trim().to_string()));
+    }
+    if let Some(c) = Regex::new(
+        r"Hardware has\s+(\d+)\s+physical cores?\s+and\s+(\d+)\s+logical cores?\.\s*Using instruction set\s+(\S+)",
+    )
+    .unwrap()
+    .captures(text)
+    {
+        obj.insert("physical_cores".into(), parse_f64_json(&c[1]));
+        obj.insert("logical_cores".into(), parse_f64_json(&c[2]));
+        obj.insert("instruction_set".into(), serde_json::Value::String(c[3].to_string()));
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_run_config(text: &str) -> Option<serde_json::Value> {
+    let c = Regex::new(r"Starting the MIP solver with\s+(\d+)\s+threads? and\s+(\d+)\s+tasks?")
+        .unwrap()
+        .captures(text)?;
+    let mut obj = serde_json::Map::new();
+    obj.insert("threads".into(), parse_f64_json(&c[1]));
+    obj.insert("tasks".into(), parse_f64_json(&c[2]));
+    Some(serde_json::Value::Object(obj))
+}
+
+fn re_fingerprint() -> &'static Regex {
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"Model fingerprint:\s+(\S+)").unwrap())
+}
+
+/// COPT prints variable-type breakdowns both before and after presolve.
+/// Before:  "    201 binaries"
+/// After:   "    177 binaries and 3 integers"
+fn parse_variable_types(text: &str) -> (Option<serde_json::Value>, Option<serde_json::Value>) {
+    let mut before = None;
+    // Before: immediately after "The original problem has:" block — look for
+    // a line like "    201 binaries" (standalone counts).
+    let orig_hdr = Regex::new(r"(?m)^The original problem has:").unwrap();
+    if let Some(m) = orig_hdr.find(text) {
+        for line in text[m.end()..].lines().take(6) {
+            if let Some(c) =
+                Regex::new(r"^\s+(\d+)\s+(binaries|integers|continuous)").unwrap().captures(line)
+            {
+                let mut obj = serde_json::Map::new();
+                obj.insert(c[2].to_string(), parse_f64_json(&c[1]));
+                before = Some(serde_json::Value::Object(obj));
+                break;
+            }
+        }
+    }
+    let after_hdr = Regex::new(r"(?m)^The presolved problem has:").unwrap();
+    let mut after = None;
+    if let Some(m) = after_hdr.find(text) {
+        for line in text[m.end()..].lines().take(6) {
+            let mut obj = serde_json::Map::new();
+            let re = Regex::new(r"(\d+)\s+(binaries|integers|continuous)").unwrap();
+            let mut found = false;
+            for c in re.captures_iter(line) {
+                obj.insert(c[2].to_string(), parse_f64_json(&c[1]));
+                found = true;
+            }
+            if found {
+                after = Some(serde_json::Value::Object(obj));
+                break;
+            }
+        }
+    }
+    (before, after)
+}
+
+/// "Range of matrix coefficients: [1e+00,2e+01]" + three similar lines.
+fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
+    let re = Regex::new(
+        r"Range of (matrix|rhs|bound|cost) coefficients:\s*\[([^,]+),([^\]]+)\]",
+    )
+    .unwrap();
+    let mut obj = serde_json::Map::new();
+    for c in re.captures_iter(text) {
+        let name = c[1].to_string();
+        let mut inner = serde_json::Map::new();
+        inner.insert("min".into(), parse_f64_json(c[2].trim()));
+        inner.insert("max".into(), parse_f64_json(c[3].trim()));
+        obj.insert(name, serde_json::Value::Object(inner));
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_violations(text: &str) -> Option<serde_json::Value> {
+    let hdr = Regex::new(r"(?m)^Violations\s*:").unwrap();
+    let m = hdr.find(text)?;
+    let row = Regex::new(
+        r"^\s+(bounds|rows|integrality)\s*:\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)?",
+    )
+    .unwrap();
+    let mut obj = serde_json::Map::new();
+    for line in text[m.end()..].lines().skip(1).take(4) {
+        if line.trim().is_empty() {
+            break;
+        }
+        if let Some(c) = row.captures(line) {
+            let mut inner = serde_json::Map::new();
+            inner.insert("absolute".into(), parse_f64_json(&c[1]));
+            if let Some(rel) = c.get(3) {
+                inner.insert("relative".into(), parse_f64_json(rel.as_str()));
+            }
+            // Wait — c[1] is the name, not the value. Fix order.
+            let name = c[1].to_string();
+            let mut inner2 = serde_json::Map::new();
+            inner2.insert("absolute".into(), parse_f64_json(&c[2]));
+            if let Some(rel) = c.get(3) {
+                inner2.insert("relative".into(), parse_f64_json(rel.as_str()));
+            }
+            obj.insert(name, serde_json::Value::Object(inner2));
+        }
+    }
+    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+}
+
+fn parse_f64_json(s: &str) -> serde_json::Value {
+    if let Ok(v) = s.trim().parse::<f64>() {
+        if let Some(n) = serde_json::Number::from_f64(v) {
+            return serde_json::Value::Number(n);
+        }
+    }
+    serde_json::Value::String(s.trim().to_string())
 }
 
 fn parse_status(text: &str, log: &mut SolverLog) {
