@@ -75,13 +75,23 @@ impl LogParser for CplexParser {
             log.tree.nodes_explored = c[3].replace(',', "").parse().ok();
         }
         if log.timing.wall_seconds.unwrap_or(0.0) == 0.0 {
-            if let Some(t) = re_elapsed()
-                .captures_iter(text)
-                .last()
-                .and_then(|c| c[1].parse::<f64>().ok())
-            {
-                if t > 0.0 {
-                    log.timing.wall_seconds = Some(t);
+            // Prefer the authoritative "Total (root+branch&cut) = T sec."
+            // summary that CPLEX prints at the end of MIP runs.
+            if let Some(c) = re_total_time().captures(text) {
+                log.timing.wall_seconds = c[1].parse().ok();
+            }
+            // Last-resort fallback to the most recent "Elapsed time" marker
+            // (for trivially fast solves where neither summary line shows
+            // the real value).
+            if log.timing.wall_seconds.unwrap_or(0.0) == 0.0 {
+                if let Some(t) = re_elapsed()
+                    .captures_iter(text)
+                    .last()
+                    .and_then(|c| c[1].parse::<f64>().ok())
+                {
+                    if t > 0.0 {
+                        log.timing.wall_seconds = Some(t);
+                    }
                 }
             }
         }
@@ -583,6 +593,15 @@ fn re_cut_line() -> &'static Regex {
 fn re_elapsed() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"Elapsed time\s*=\s*([\d.]+)\s+sec").unwrap())
+}
+
+fn re_total_time() -> &'static Regex {
+    // "Total (root+branch&cut) = 2.00 sec. (3325.32 ticks)" — the canonical
+    // CPLEX MIP wall time at termination.
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(r"Total\s*\(root\+branch&cut\)\s*=\s*([\d.]+)\s+sec").unwrap()
+    })
 }
 
 #[cfg(test)]

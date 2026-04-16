@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
-"""Solve p0201 (MIPLIB) with every available solver, capturing log output.
+"""Run every available solver on each fixture instance, capturing log output.
 
 Usage:
     python tests/generate_logs.py [--out-dir tests/fixtures/logs]
 
-Each solver writes its log to <out-dir>/<solver>.log.
 Solvers that aren't installed are silently skipped.
 
-p0201 is a 201-variable (all binary), 133-constraint set-partitioning problem.
-Known optimal: 7615.  Solves in <1s on any modern solver but is large enough
-to trigger presolve, cuts, heuristics, and a short B&B tree.
+Two fixture sets are produced:
+
+  *.log
+    Each solver on p0201 (MIPLIB) — a 201-variable binary set-partitioning
+    problem. Every solver finishes in <1s but the log still triggers presolve,
+    cuts, heuristics, and a short B&B tree.
+
+  *-timelimit.log
+    Each solver on glass4 (MIPLIB) with a 5-second wall-clock cap. glass4 is
+    a notoriously hard 322-variable bin-packing-like instance; commercial
+    solvers don't close it in 5s. This exercises the parsers' time-limit
+    code paths (Status::TimeLimit, non-zero gap on termination, …).
 """
 
 import argparse
@@ -20,113 +28,104 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-MPS = HERE / "fixtures" / "p0201.mps"
-EXPECTED_OBJ = 7615.0
-
-
-def out_path(out_dir: Path, solver: str) -> Path:
-    return out_dir / f"{solver}.log"
+P0201 = HERE / "fixtures" / "p0201.mps"
+GLASS4 = HERE / "fixtures" / "glass4.mps"
 
 
 # ---------------------------------------------------------------------------
-# Solver generators — each returns True if a usable log was produced.
+# Per-solver generators — each takes (mps_path, time_limit, log_path).
+# `time_limit` is None for "let it finish".
+# Returns True if a usable log was produced.
 # ---------------------------------------------------------------------------
 
-def generate_highs(out_dir: Path) -> bool:
-    log = out_path(out_dir, "highs")
-
-    # CLI
+def generate_highs(mps: Path, time_limit, log: Path) -> bool:
+    # CLI first.
+    args = ["highs", str(mps), "--solution_file", "/dev/null", "--log_file", str(log)]
+    if time_limit:
+        args += ["--time_limit", str(time_limit)]
     try:
-        r = subprocess.run(
-            ["highs", str(MPS), "--solution_file", "/dev/null",
-             "--log_file", str(log)],
-            capture_output=True, text=True, timeout=60,
-        )
+        subprocess.run(args, capture_output=True, text=True, timeout=time_limit + 30 if time_limit else 60)
         if log.exists() and log.stat().st_size > 200:
             return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
-
-    # Python fallback
+    # Python fallback.
     try:
         import highspy
         h = highspy.Highs()
         h.setOptionValue("log_file", str(log))
-        h.readModel(str(MPS))
+        if time_limit:
+            h.setOptionValue("time_limit", float(time_limit))
+        h.readModel(str(mps))
         h.run()
         return log.exists() and log.stat().st_size > 200
     except Exception:
         return False
 
 
-def generate_scip(out_dir: Path) -> bool:
-    """SCIP — prefer the CLI because it emits the banner (with version +
-    GitHash) that PySCIPOpt's `setLogfile` skips. The binary path is taken
-    from $SCIP_BINARY, falls back to `scip` on PATH.
-    """
-    log = out_path(out_dir, "scip")
+def generate_scip(mps: Path, time_limit, log: Path) -> bool:
     binary = os.environ.get("SCIP_BINARY", "scip")
+    if time_limit:
+        # Bundle the limit-set + read + optimize into one `-c` string. SCIP's
+        # CLI treats each `-c` as a separate session script and only runs the
+        # last instruction set; using `-c` plus `-f` would silently drop the
+        # `-c` content (and its banner suppression).
+        cmd = [binary, "-l", str(log), "-c",
+               f"set limits time {time_limit} read {mps} optimize quit"]
+    else:
+        cmd = [binary, "-l", str(log), "-f", str(mps)]
     try:
-        # Argument order matters: `-l` must precede `-f`, otherwise SCIP solves
-        # *before* logging gets enabled and only the banner lands in the file.
-        r = subprocess.run(
-            [binary, "-l", str(log), "-f", str(MPS)],
-            capture_output=True, text=True, timeout=60,
-        )
+        subprocess.run(cmd, capture_output=True, text=True, timeout=time_limit + 30 if time_limit else 60)
         if log.exists() and log.stat().st_size > 200:
             return True
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
-
-    # Fallback: PySCIPOpt. Missing version/git, but better than nothing.
+    # PySCIPOpt fallback (skips banner; less informative).
     try:
         from pyscipopt import Model
         m = Model()
         m.setLogfile(str(log))
-        m.readProblem(str(MPS))
+        if time_limit:
+            m.setParam("limits/time", float(time_limit))
+        m.readProblem(str(mps))
         m.optimize()
         return log.exists() and log.stat().st_size > 200
     except Exception:
         return False
 
 
-def generate_gurobi(out_dir: Path) -> bool:
-    """Gurobi via gurobipy. pip package includes a restricted license
-    (up to 2000 vars / 2000 constraints, no key needed)."""
-    log = out_path(out_dir, "gurobi")
+def generate_gurobi(mps: Path, time_limit, log: Path) -> bool:
     try:
         import gurobipy as gp
-        m = gp.read(str(MPS))
+        m = gp.read(str(mps))
         m.setParam("LogFile", str(log))
+        if time_limit:
+            m.setParam("TimeLimit", float(time_limit))
         m.optimize()
         return log.exists() and log.stat().st_size > 200
     except Exception:
         return False
 
 
-def generate_copt(out_dir: Path) -> bool:
-    """COPT via coptpy. pip package includes a free tier
-    (up to 2000 vars / 2000 constraints, no key needed)."""
-    log = out_path(out_dir, "copt")
+def generate_copt(mps: Path, time_limit, log: Path) -> bool:
     try:
         import coptpy as cp
         env = cp.Envr()
         m = env.createModel()
         m.setLogFile(str(log))
-        m.read(str(MPS))
+        if time_limit:
+            m.setParam("TimeLimit", float(time_limit))
+        m.read(str(mps))
         m.solve()
         return log.exists() and log.stat().st_size > 200
     except Exception:
         return False
 
 
-def generate_xpress(out_dir: Path) -> bool:
-    """Xpress via its Python API. pip package includes a community license
-    (up to ~5000 vars / 5000 constraints, no key needed)."""
-    log = out_path(out_dir, "xpress")
+def generate_xpress(mps: Path, time_limit, log: Path) -> bool:
     try:
         import xpress as xp
-        # Initialize with community license to silence warning
+        # Initialize community license if available
         try:
             lic = Path(xp.__file__).parent / "license" / "community-xpauth.xpr"
             if lic.exists():
@@ -134,25 +133,28 @@ def generate_xpress(out_dir: Path) -> bool:
         except Exception:
             pass
         m = xp.problem()
-        m.read(str(MPS))
+        m.read(str(mps))
         m.setControl("outputlog", 1)
         m.setLogFile(str(log))
+        if time_limit:
+            # Xpress uses `maxtime` (negative = soft limit including output).
+            m.setControl("maxtime", int(time_limit))
         m.optimize()
         return log.exists() and log.stat().st_size > 200
     except Exception:
         return False
 
 
-def generate_cbc(out_dir: Path) -> bool:
-    """CBC via CLI (apt install coinor-cbc)."""
-    log = out_path(out_dir, "cbc")
+def generate_cbc(mps: Path, time_limit, log: Path) -> bool:
     try:
         sol = tempfile.NamedTemporaryFile(suffix=".sol", delete=False)
         sol.close()
-        r = subprocess.run(
-            ["cbc", str(MPS), "solve", "solution", sol.name],
-            capture_output=True, text=True, timeout=60,
-        )
+        cmd = ["cbc", str(mps)]
+        if time_limit:
+            cmd += ["seconds", str(time_limit)]
+        cmd += ["solve", "solution", sol.name]
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           timeout=time_limit + 30 if time_limit else 60)
         log.write_text(r.stdout + r.stderr)
         os.unlink(sol.name)
         return log.stat().st_size > 200
@@ -160,14 +162,11 @@ def generate_cbc(out_dir: Path) -> bool:
         return False
 
 
-def generate_cplex(out_dir: Path) -> bool:
-    """CPLEX via its Python API. pip package includes a community edition
-    (up to 1000 vars / 1000 constraints, no key needed)."""
-    log = out_path(out_dir, "cplex")
+def generate_cplex(mps: Path, time_limit, log: Path) -> bool:
     try:
         import cplex
         c = cplex.Cplex()
-        c.read(str(MPS))
+        c.read(str(mps))
         f = open(str(log), "w")
 
         class W:
@@ -182,11 +181,14 @@ def generate_cplex(out_dir: Path) -> bool:
         c.set_log_stream(w)
         c.set_results_stream(w)
         c.set_warning_stream(w)
+        if time_limit:
+            c.parameters.timelimit.set(float(time_limit))
         c.solve()
-
-        # CPLEX prints the final summary to stdout, not log streams — append it
         status_str = c.solution.get_status_string()
-        obj = c.solution.get_objective_value()
+        try:
+            obj = c.solution.get_objective_value()
+        except Exception:
+            obj = float("nan")
         iters = c.solution.progress.get_num_iterations()
         nodes = c.solution.progress.get_num_nodes_processed()
         f.write(f"\nMIP - {status_str}:  Objective = {obj:.10e}\n")
@@ -197,17 +199,18 @@ def generate_cplex(out_dir: Path) -> bool:
         return False
 
 
-def generate_mosek(out_dir: Path) -> bool:
-    """Mosek via its Python API. Requires a license file."""
-    log = out_path(out_dir, "mosek")
+def generate_mosek(mps: Path, time_limit, log: Path) -> bool:
     try:
         import mosek
         with mosek.Env() as env:
             with env.Task(0, 0) as task:
                 fh = open(str(log), "w")
                 task.set_Stream(mosek.streamtype.log, lambda msg: fh.write(msg))
-                task.readdata(str(MPS))
-                task.putintparam(mosek.iparam.mio_max_time, 60)
+                task.readdata(str(mps))
+                if time_limit:
+                    task.putdouparam(mosek.dparam.mio_max_time, float(time_limit))
+                else:
+                    task.putdouparam(mosek.dparam.mio_max_time, 60.0)
                 task.optimize()
                 fh.close()
         return log.exists() and log.stat().st_size > 200
@@ -216,46 +219,65 @@ def generate_mosek(out_dir: Path) -> bool:
 
 
 GENERATORS = {
-    "highs":   generate_highs,
-    "scip":    generate_scip,
-    "gurobi":  generate_gurobi,
-    "copt":    generate_copt,
-    "xpress":  generate_xpress,
-    "cbc":     generate_cbc,
-    "cplex":   generate_cplex,
-    "mosek":   generate_mosek,
+    "highs": generate_highs,
+    "scip": generate_scip,
+    "gurobi": generate_gurobi,
+    "copt": generate_copt,
+    "xpress": generate_xpress,
+    "cbc": generate_cbc,
+    "cplex": generate_cplex,
+    "mosek": generate_mosek,
 }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=HERE / "fixtures" / "logs",
-    )
+    parser.add_argument("--out-dir", type=Path, default=HERE / "fixtures" / "logs")
     args = parser.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    generated = []
-    skipped = []
+    suites = [
+        # (instance, time_limit, log_suffix)
+        (P0201, None, ""),
+        # 2-second cap on glass4 — short enough that even Gurobi 12 on a fast
+        # machine doesn't close it (we measured ~3.75s for full solve), so
+        # every solver hits the time limit and we exercise the parser's
+        # `Status::TimeLimit` + non-zero gap code paths.
+        (GLASS4, 2, "-timelimit"),
+    ]
 
-    for name, gen in GENERATORS.items():
-        ok = gen(args.out_dir)
-        if ok:
-            generated.append(name)
-            sz = out_path(args.out_dir, name).stat().st_size
-            print(f"  ✓ {name:12s}  {sz:>8,} bytes")
-        else:
-            skipped.append(name)
-            print(f"  ✗ {name:12s}  (not available)")
-
-    print(f"\nGenerated {len(generated)}/{len(GENERATORS)}: {', '.join(generated)}")
-    if skipped:
-        print(f"Skipped: {', '.join(skipped)}")
-
-    return 0 if generated else 1
+    for mps, time_limit, suffix in suites:
+        if not mps.exists():
+            print(f"skip {mps.name}: not found")
+            continue
+        label = f"{mps.stem}" + (f" (time limit {time_limit}s)" if time_limit else "")
+        print(f"\n=== {label} ===")
+        generated, skipped = [], []
+        for name, gen in GENERATORS.items():
+            log = args.out_dir / f"{name}{suffix}.log"
+            # Always start clean — most solvers append to LogFile, so leftover
+            # content from prior runs would shadow whatever this invocation
+            # produces (and confuse parsers that pick the first match).
+            if log.exists():
+                log.unlink()
+            ok = gen(mps, time_limit, log)
+            # Clean up partial / too-small outputs whether `gen` claimed
+            # success or not — Mosek without a license, for instance, writes
+            # ~14 lines of read-only banner before erroring out.
+            if not ok or (log.exists() and log.stat().st_size < 500):
+                if log.exists():
+                    log.unlink()
+                ok = False
+            if ok:
+                generated.append(name)
+                print(f"  ✓ {name:12s}  {log.stat().st_size:>8,} bytes")
+            else:
+                skipped.append(name)
+                print(f"  ✗ {name:12s}  (not available or failed)")
+        print(f"\nGenerated {len(generated)}/{len(GENERATORS)}: {', '.join(generated)}")
+        if skipped:
+            print(f"Skipped: {', '.join(skipped)}")
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

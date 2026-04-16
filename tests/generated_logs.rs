@@ -195,6 +195,57 @@ fn generated_mosek() {
     }
 }
 
+/// Time-limit fixtures: every `*-timelimit.log` must parse with
+/// `Status::TimeLimit`, a non-zero gap, and both bounds populated.
+/// These exercise the parser code paths that don't fire on the
+/// optimal-completion `*.log` fixtures.
+#[test]
+fn timelimit_fixtures_parse_as_time_limit() {
+    let dir = Path::new(LOGS_DIR);
+    if !dir.exists() {
+        return;
+    }
+    let mut total = 0;
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        let n = path.file_name().unwrap().to_string_lossy().into_owned();
+        if !n.ends_with("-timelimit.log") {
+            continue;
+        }
+        total += 1;
+        let text = std::fs::read_to_string(&path).unwrap();
+        let log = autodetect(&text)
+            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        assert_eq!(
+            log.termination.status,
+            Status::TimeLimit,
+            "{n}: expected TimeLimit, got {:?} ({:?})",
+            log.termination.status,
+            log.termination.raw_reason,
+        );
+        assert!(
+            log.bounds.primal.is_some(),
+            "{n}: time-limit run should have a primal incumbent",
+        );
+        assert!(
+            log.bounds.dual.is_some(),
+            "{n}: time-limit run should have a dual bound",
+        );
+        let gap = log.bounds.effective_gap().unwrap();
+        assert!(
+            gap > 0.001,
+            "{n}: time-limit run should have a non-trivial gap, got {gap}",
+        );
+        let wall = log.timing.wall_seconds.unwrap_or(0.0);
+        assert!(
+            wall > 0.5,
+            "{n}: wall_seconds {wall} suspiciously small for a time-limited run",
+        );
+    }
+    assert!(total >= 4, "expected ≥4 -timelimit.log fixtures, found {total}");
+    eprintln!("verified {total} time-limit fixtures");
+}
+
 /// Every generated log must satisfy the documented Core (`verify_common`)
 /// tier. A failure here means a parser isn't populating fields that the
 /// schema promises as reliably cross-solver — file as a parser bug.

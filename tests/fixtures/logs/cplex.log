@@ -47,7 +47,7 @@ Root relaxation solution time = 0.00 sec. (1.11 ticks)
       0     0     7475.0000    45     7835.0000   ZeroHalf: 5      353    4.59%
 *     0+    0                         7615.0000     7475.0000             1.84%
       0     0        cutoff           7615.0000     7615.0000      353    0.00%
-Elapsed time = 0.04 sec. (52.57 ticks, tree = 0.01 MB, solutions = 5)
+Elapsed time = 0.05 sec. (52.57 ticks, tree = 0.01 MB, solutions = 5)
 
 GUB cover cuts applied:  2
 Cover cuts applied:  3
@@ -55,13 +55,13 @@ Mixed integer rounding cuts applied:  1
 Zero-half cuts applied:  16
 
 Root node processing (before b&c):
-  Real time             =    0.04 sec. (52.59 ticks)
+  Real time             =    0.05 sec. (52.59 ticks)
 Parallel b&c, 14 threads:
   Real time             =    0.00 sec. (0.00 ticks)
   Sync time (average)   =    0.00 sec.
   Wait time (average)   =    0.00 sec.
                           ------------
-Total (root+branch&cut) =    0.04 sec. (52.59 ticks)
+Total (root+branch&cut) =    0.05 sec. (52.59 ticks)
 
 MIP - integer optimal solution:  Objective = 7.6150000000e+03
 Solution time = 0.00 sec.  Iterations = 353  Nodes = 0

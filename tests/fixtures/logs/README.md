@@ -5,6 +5,22 @@ a 201-variable / 133-constraint binary set-partitioning instance with known
 optimal objective 7615. The instance is small enough that every free
 community-tier solver can handle it in under a second.
 
+## Two fixture suites
+
+### `<solver>.log` — p0201 (optimal completion)
+
+A 201-variable binary set-partitioning problem from MIPLIB. Every solver
+finishes in <1s; the log still triggers presolve, cuts, heuristics, and a
+short B&B tree. Used to validate the optimal-completion code paths.
+
+### `<solver>-timelimit.log` — glass4 with a 2s wall-time cap
+
+A 322-variable bin-packing-like instance (also MIPLIB), historically hard
+for many solvers. Capped at 2 seconds so even fast solvers (Gurobi 12,
+COPT 8) hit the time limit and produce a `Status::TimeLimit` run with
+non-zero gap. Exercises the parsers' early-termination paths: time-limit
+status detection, primal/dual bounds when not proven optimal, gap > 0.
+
 ## Currently-committed versions
 
 Each fixture log was produced by the solver version shown below — the

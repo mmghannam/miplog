@@ -27,7 +27,7 @@ Src  Proc. InQueue |  Leaves   Expl. | BestBound       BestSol              Gap 
  J       0       0         0   0.00%   -inf            11340              Large        0      0      0         0     0.0s
  R       0       0         0   0.00%   7125            9160              22.22%        0      0      0        79     0.0s
  C       0       0         0   0.00%   7224.117647     8530              15.31%      398      6      0       166     0.0s
- L       0       0         0   0.00%   7451.837623     7615               2.14%     3265     33      0       610     0.2s
+ L       0       0         0   0.00%   7451.837623     7615               2.14%     3265     33      0       610     0.1s
 
 2.3% inactive integer columns, restarting
 Model after restart has 102 rows, 171 cols (168 bin., 3 int., 0 impl., 0 cont., 0 dom.fix.), and 1416 nonzeros
@@ -42,13 +42,13 @@ Solving report
   Primal bound      7615
   Dual bound        7615
   Gap               0% (tolerance: 0.01%)
-  P-D integral      0.0362067575694
+  P-D integral      0.0285705776778
   Solution status   feasible
                     7615 (objective)
                     0 (bound viol.)
                     3.33066907388e-16 (int. viol.)
                     0 (row viol.)
-  Timing            0.74
+  Timing            0.67
   Max sub-MIP depth 2
   Nodes             13
   Repair LPs        0
