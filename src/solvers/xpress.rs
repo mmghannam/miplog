@@ -31,12 +31,27 @@ impl LogParser for XpressParser {
 
         // Status. Xpress prints "*** Search completed ***" when the MIP B&B
         // finished normally; "*** Search unfinished ***" when maxtime hit.
-        if text.contains("*** Search completed ***") {
-            log.termination.status = Status::Optimal;
-        } else if text.contains("Problem is integer infeasible")
+        // Check infeasibility BEFORE "Search completed" — Xpress prints
+        // "Problem is integer infeasible" *after* "*** Search completed ***",
+        // so taking the first match would mis-classify the run as Optimal.
+        if text.contains("Problem is integer infeasible")
             || text.contains("Problem is infeasible")
+            || text.contains("The problem is infeasible")
         {
             log.termination.status = Status::Infeasible;
+        } else if text.contains("*** Search completed ***") {
+            log.termination.status = Status::Optimal;
+        } else if !text.contains("MILP") && !text.contains("Final MIP")
+            && !text.contains("Starting root cutting")
+            && (text.contains("Dual solved problem")
+                || text.contains("Optimal solution found"))
+        {
+            // LP-only run (no B&B). Xpress always solves an LP relaxation
+            // first even on MIPs, so we restrict this branch to logs that
+            // lack any MIP-specific marker ("MILP", "Final MIP", "Starting
+            // root cutting"). Otherwise the MILP time-/node-limit logs would
+            // false-positive as Optimal LP.
+            log.termination.status = Status::Optimal;
         } else if let Some(reason) = xpress_stop_reason(text) {
             // STOPPING - MAXTIME / MAXNODE / MAXSOL / MAXMIPSOL / MIPRELSTOP /
             // MIPABSSTOP target reached. Distinguish time vs other-limit.
@@ -56,13 +71,34 @@ impl LogParser for XpressParser {
         if let Some(c) = re_soltime().captures(text) {
             log.timing.wall_seconds = c[1].parse().ok();
         }
+        // LP-only fallback: "  N simplex iterations in 0.00 seconds at time 0"
+        if log.timing.wall_seconds.is_none() {
+            if let Some(c) = re_lp_simplex_summary().captures(text) {
+                log.timing.wall_seconds = c[2].parse().ok();
+                if log.tree.simplex_iterations.is_none() {
+                    log.tree.simplex_iterations = c[1].parse().ok();
+                }
+            }
+        }
 
-        // Bounds: final MIP objective & bound
+        // Bounds: prefer the MIP-specific "Final MIP objective"/bound lines.
+        // Fall back to LP-only "Final objective" (mirrored into both bounds
+        // since LP optimality is duality-tight).
         if let Some(c) = re_final_obj().captures(text) {
             log.bounds.primal = c[1].parse().ok();
         }
         if let Some(c) = re_final_bound().captures(text) {
             log.bounds.dual = c[1].parse().ok();
+        }
+        if log.bounds.primal.is_none() {
+            // LP-only: "Final objective : -5.0e+00"
+            if let Some(c) = re_lp_final_obj().captures(text) {
+                let v: Option<f64> = c[1].parse().ok();
+                log.bounds.primal = v;
+                if log.bounds.dual.is_none() {
+                    log.bounds.dual = v;
+                }
+            }
         }
 
         // "Number of solutions found / nodes:  N / M"
@@ -521,6 +557,19 @@ fn re_soltime() -> &'static Regex {
 fn re_final_obj() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"Final MIP objective\s*:\s*([\d.eE+\-]+)").unwrap())
+}
+fn re_lp_simplex_summary() -> &'static Regex {
+    // "  85 simplex iterations in 0.00 seconds at time 0"
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(r"(\d+) simplex iterations? in ([\d.]+) seconds").unwrap()
+    })
+}
+fn re_lp_final_obj() -> &'static Regex {
+    // LP-only termination: matches "Final objective : X" but only when
+    // it isn't the MIP variant (handled separately above).
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"(?m)^Final objective\s*:\s*([\d.eE+\-]+)").unwrap())
 }
 fn re_final_bound() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();

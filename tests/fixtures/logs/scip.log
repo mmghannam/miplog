@@ -53,7 +53,7 @@ L 0.0s|     1 |     0 |    10 |     - |feasjump|   0 | 183 | 118 | 107 |   0 |  
   0.0s|     1 |     0 |   315 |     - |  9211k |   0 | 183 | 121 | 117 |  10 |  4 |  13 |   0 | 7.259122e+03 | 1.084000e+04 |  49.33%| unknown
   0.0s|     1 |     0 |   347 |     - |    10M |   0 | 183 | 122 | 119 |  12 |  5 |  14 |   0 | 7.279444e+03 | 1.084000e+04 |  48.91%| unknown
   0.0s|     1 |     0 |   379 |     - |    12M |   0 | 183 | 123 | 121 |  14 |  6 |  15 |   0 | 7.290844e+03 | 1.084000e+04 |  48.68%| unknown
-  0.0s|     1 |     0 |   399 |     - |    15M |   0 | 183 | 124 | 122 |  15 |  7 |  16 |   0 | 7.302835e+03 | 1.084000e+04 |  48.44%| unknown
+  0.1s|     1 |     0 |   399 |     - |    15M |   0 | 183 | 124 | 122 |  15 |  7 |  16 |   0 | 7.302835e+03 | 1.084000e+04 |  48.44%| unknown
   0.1s|     1 |     0 |   437 |     - |    16M |   0 | 183 | 124 | 123 |  16 |  8 |  16 |   0 | 7.311271e+03 | 1.084000e+04 |  48.26%| unknown
   0.1s|     1 |     0 |   483 |     - |    19M |   0 | 183 | 125 | 124 |  17 |  9 |  17 |   0 | 7.327976e+03 | 1.084000e+04 |  47.93%| unknown
 r 0.1s|     1 |     0 |   483 |     - |shifting|   0 | 183 | 125 | 124 |  17 |  9 |  17 |   0 | 7.327976e+03 | 8.325000e+03 |  13.61%| unknown
@@ -319,7 +319,7 @@ Primal Heuristics  :   ExecTime  SetupTime      Calls      Found       Best
   dks              :       0.00       0.00          0          0          0
   dps              :       0.00       0.00          0          0          0
   dualval          :       0.00       0.00          0          0          0
-  farkasdiving     :       0.00       0.00          1          0          0
+  farkasdiving     :       0.01       0.00          1          0          0
   feasjump         :       0.00       0.00          1          1          1
   feaspump         :       0.00       0.00          1          1          0
   fixandinfer      :       0.00       0.00          0          0          0
@@ -346,7 +346,7 @@ Primal Heuristics  :   ExecTime  SetupTime      Calls      Found       Best
   proximity        :       0.00       0.00          0          0          0
   pscostdiving     :       0.00       0.00          0          0          0
   randrounding     :       0.01       0.00         35          0          0
-  rens             :       0.00       0.00          1          0          0
+  rens             :       0.01       0.00          1          0          0
   reoptsols        :       0.00       0.00          0          0          0
   repair           :       0.00       0.00          0          0          0
   rins             :       0.00       0.00          0          0          0
@@ -370,12 +370,12 @@ Primal Heuristics  :   ExecTime  SetupTime      Calls      Found       Best
   other solutions  :          -          -          -          0          -
 LP                 :       Time      Calls Iterations  Iter/call   Iter/sec  Time-0-It Calls-0-It
   primal LP        :       0.00          5          0       0.00          -       0.00          5
-  dual LP          :       0.03        153       2476      26.34   91730.88       0.00         59
+  dual LP          :       0.03        153       2476      26.34   93536.32       0.00         59
   lex dual LP      :       0.00          0          0       0.00          -
   barrier LP       :       0.00          0          0       0.00          -       0.00          0
   resolve instable :       0.00          0          0       0.00          -
-  diving/probing LP:       0.01         38        765      20.13   75615.30
-  strong branching :       0.19        344      20044      58.27  105470.87          -          -          2
+  diving/probing LP:       0.01         38        765      20.13   70273.75
+  strong branching :       0.19        344      20044      58.27  107868.41          -          -          2
     (at root node) :          -         24       3931     163.79          -
   conflict analysis:       0.00         46        390       8.48          -
 Relaxators         :       Time      Calls    Cutoffs ImprBounds   ImprTime ReducedDom  Separated AddedConss
@@ -399,7 +399,7 @@ B&B Tree           :
   switching time   :       0.00
 Root Node          :
   First LP value   : +7.11500000000000e+03
-  First LP Iters   :        136 (197387.52 Iter/sec)
+  First LP Iters   :        136 (187327.82 Iter/sec)
   First LP Time    :       0.00
   Final Dual Bound : +7.37159226382289e+03
   Final Root Iters :        868
@@ -409,10 +409,10 @@ Solution           :
   First Solution   : +1.20850000000000e+04   (in run 1, after 1 nodes, 0.01 seconds, depth 26, found by <locks>)
   Gap First Sol.   :   infinite
   Gap Last Sol.    :       2.49 %
-  Primal Bound     : +7.61500000000000e+03   (in run 1, after 28 nodes, 0.38 seconds, depth 6, found by <relaxation>)
+  Primal Bound     : +7.61500000000000e+03   (in run 1, after 28 nodes, 0.39 seconds, depth 6, found by <relaxation>)
   Dual Bound       : +7.61500000000000e+03
   Gap              :       0.00 %
 Integrals          :      Total       Avg%
-  primal-dual      :       4.93      12.77
+  primal-dual      :       5.44      13.82
   primal-ref       :          -          - (not evaluated)
   dual-ref         :          -          - (not evaluated)

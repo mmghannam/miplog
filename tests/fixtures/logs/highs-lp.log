@@ -1,0 +1,23 @@
+Running HiGHS 1.14.0 (git hash: 7df0786): Copyright (c) 2026 under MIT licence terms
+LP tinylp has 2 rows; 3 cols; 6 nonzeros
+Coefficient ranges:
+  Matrix  [1e+00, 4e+00]
+  Cost    [1e+00, 3e+00]
+  Bound   [0e+00, 0e+00]
+  RHS     [2e+00, 2e+01]
+Presolving model
+2 rows, 3 cols, 6 nonzeros 0s
+2 rows, 3 cols, 6 nonzeros 0s
+Presolve reductions: rows 2(-0); columns 3(-0); nonzeros 6(-0) - Not reduced
+Problem not reduced by presolve: solving the LP
+Using dual simplex solver
+  Iteration        Objective     Infeasibilities num(sum)
+          0    -9.9999818578e-01 Ph1: 1(4); Du: 1(0.999998) 0.0s
+          1    -5.0000000000e+00 Pr: 0(0) 0.0s
+
+Model name          : tinylp
+Model status        : Optimal
+Simplex   iterations: 1
+Objective value     : -5.0000000000e+00
+P-D objective error :  0.0000000000e+00
+HiGHS run time      :          0.00

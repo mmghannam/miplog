@@ -284,6 +284,38 @@ fn parse_f64_json(s: &str) -> serde_json::Value {
 }
 
 fn parse_status(text: &str, log: &mut SolverLog) {
+    // LP-only output:
+    //   "Solving finished"
+    //   "Status: Optimal  Objective: -5.0e+00  Iterations: 1  Time: 0.00s"
+    if let Some(c) = regex::Regex::new(
+        r"(?m)^Status:\s+(\S+)\s+Objective:\s+([-\d.eE+]+)(?:\s+Iterations:\s+(\d+))?(?:\s+Time:\s+([\d.]+))?",
+    )
+    .unwrap()
+    .captures(text)
+    {
+        let s = &c[1];
+        log.termination.raw_reason = Some(s.to_string());
+        log.termination.status = match s {
+            "Optimal" => Status::Optimal,
+            "Infeasible" => Status::Infeasible,
+            "Unbounded" => Status::Unbounded,
+            _ => Status::Unknown,
+        };
+        if log.termination.status == Status::Optimal {
+            let v: Option<f64> = c[2].parse().ok();
+            log.bounds.primal = v;
+            log.bounds.dual = v;
+            log.bounds.gap = Some(0.0);
+        }
+        if let Some(iters) = c.get(3) {
+            log.tree.simplex_iterations = iters.as_str().parse().ok();
+        }
+        if let Some(t) = c.get(4) {
+            log.timing.wall_seconds = t.as_str().parse().ok();
+        }
+        return;
+    }
+
     // Check "Solution status" first (more specific), then "MIP status"
     for line in text.lines() {
         let trimmed = line.trim();

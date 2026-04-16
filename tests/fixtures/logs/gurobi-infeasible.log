@@ -1,0 +1,26 @@
+
+Gurobi 12.0.3 (mac64[arm]) logging started Thu Apr 16 09:50:48 2026
+
+Set parameter LogFile to value "/Users/ghannam/projects/orlog/tests/fixtures/logs/gurobi-infeasible.log"
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[arm] - Darwin 24.6.0 24G84)
+
+CPU model: Apple M4 Pro
+Thread count: 14 physical cores, 14 logical processors, using up to 14 threads
+
+Optimize a model with 2 rows, 1 columns and 2 nonzeros
+Model fingerprint: 0x027950a0
+Variable types: 0 continuous, 1 integer (1 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 1e+00]
+  Objective range  [1e+00, 1e+00]
+  Bounds range     [1e+00, 1e+00]
+  RHS range        [1e+00, 1e+00]
+Presolve time: 0.00s
+
+Explored 0 nodes (0 simplex iterations) in 0.00 seconds (0.00 work units)
+Thread count was 1 (of 14 available processors)
+
+Solution count 0
+
+Model is infeasible
+Best objective -, best bound -, gap -

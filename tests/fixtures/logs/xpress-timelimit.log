@@ -1,4 +1,4 @@
-FICO Xpress v9.8.1, Community, solve started 9:41:12, Apr 16, 2026
+FICO Xpress v9.8.1, Community, solve started 9:50:37, Apr 16, 2026
 Heap usage: 527KB (peak 527KB, 72KB system)
 Minimizing MILP glass4 using up to 14 threads and up to 24GB memory, with these control settings:
 MAXTIME = 2
@@ -24,7 +24,7 @@ Symmetric problem: generators: 1, support set: 2
  Number of orbits: 1, largest orbit: 2
  Row orbits: 1, row support: 2
 Will try to keep branch and bound tree memory usage below 22.7GB
- *** Solution found:  3300021200.   Time:   0.01    Heuristic: e ***
+ *** Solution found:  3300021200.   Time:   0.00    Heuristic: e ***
 Starting concurrent solve with dual (1 thread)
 
  Concurrent-Solve,   0s
@@ -144,8 +144,8 @@ B&B tree size: 363k total
     2101  1866682633.  800520920.4     11   1557     42   57.12%      34      0
     2222  1866682633.  800584129.5     11   1630     44   57.11%      22      0
 Elapsed time (sec): 0, estimated tree completion: 0.00106
-Heap usage: 202MB (peak 202MB, 1068KB system)
-B&B tree size: 4.4MB total
+Heap usage: 203MB (peak 203MB, 1068KB system)
+B&B tree size: 4.3MB total
  
     Node     BestSoln    BestBound   Sols Active  Depth     Gap     GInf   Time
 g   2255  1800015500.  800584129.5     12   1650     54   55.52%       0      0
@@ -199,10 +199,10 @@ P         1700014200.  800584129.5     13                 52.91%       0      0
   16  K   1700014200.  800584129.5     13    356    159   52.91%     121      0
   17  K   1700014200.  800584129.5     13    217    301   52.91%     118      0
   18  K   1700014200.  800584129.5     13     95    209   52.91%     121      0
-  19  K   1700014200.  800584129.5     13    314     99   52.91%     119      0
-  20  K   1700014200.  800584129.5     13     33    578   52.91%     121      0
-  21  G   1700014200.  800584129.5     13     29      0   52.91%     122      0
-  22  G   1700014200.  800584129.5     13    179    254   52.91%     107      0
+  19  K   1700014200.  800584129.5     13    314     99   52.91%     119      1
+  20  K   1700014200.  800584129.5     13     33    578   52.91%     121      1
+  21  G   1700014200.  800584129.5     13     29      0   52.91%     122      1
+  22  G   1700014200.  800584129.5     13    179    254   52.91%     107      1
 Heuristic search 'R' started
 Heuristic search 'R' stopped
  
@@ -211,9 +211,9 @@ Cut elements in the matrix : 1746
 
 Starting tree search.
 Deterministic mode with up to 14 running threads and up to 32 tasks.
-Heap usage: 6579KB (peak 202MB, 104KB system)
+Heap usage: 6579KB (peak 203MB, 104KB system)
 Elapsed time (sec): 1, estimated tree completion: 0.00000
-Heap usage: 6579KB (peak 202MB, 104KB system)
+Heap usage: 6579KB (peak 203MB, 104KB system)
 B&B tree size: 92k total
  
     Node     BestSoln    BestBound   Sols Active  Depth     Gap     GInf   Time
@@ -237,7 +237,7 @@ B&B tree size: 92k total
     2762  1700014200.  800584129.5     13    157     24   52.91%      36      1
     2862  1700014200.  800584129.5     13    251     24   52.91%      46      1
 Elapsed time (sec): 1, estimated tree completion: 0.00819
-Heap usage: 187MB (peak 202MB, 1068KB system)
+Heap usage: 187MB (peak 203MB, 1068KB system)
 B&B tree size: 0.9MB total
  
     Node     BestSoln    BestBound   Sols Active  Depth     Gap     GInf   Time
@@ -262,7 +262,7 @@ B&B tree size: 0.9MB total
     4818  1700014200.  859048278.6     13   1639     24   49.47%      35      1
     4920  1700014200.  859048278.6     13   1704     32   49.47%      54      1
 Elapsed time (sec): 1, estimated tree completion: 0.08113
-Heap usage: 192MB (peak 202MB, 1068KB system)
+Heap usage: 191MB (peak 203MB, 1068KB system)
 B&B tree size: 4.3MB total
  
     Node     BestSoln    BestBound   Sols Active  Depth     Gap     GInf   Time
@@ -287,7 +287,7 @@ B&B tree size: 4.3MB total
     6996  1700014200.  898010827.1     13   2833     44   47.18%      39      1
     7103  1700014200.  898010827.1     13   2919     28   47.18%      59      1
 Elapsed time (sec): 1, estimated tree completion: 0.08211
-Heap usage: 195MB (peak 202MB, 1068KB system)
+Heap usage: 195MB (peak 203MB, 1068KB system)
 B&B tree size: 7.2MB total
  
     Node     BestSoln    BestBound   Sols Active  Depth     Gap     GInf   Time
@@ -306,29 +306,14 @@ B&B tree size: 7.2MB total
     8533  1700014200.  900004341.5     13   3764     56   47.06%      39      1
     8633  1700014200.  900004341.5     13   3814     20   47.06%      60      1
     8742  1700014200.  900004341.5     13   3898     24   47.06%      47      1
-    8849  1700014200.  900004341.5     13   3921     78   47.06%      31      1
-    8962  1700014200.  900004341.5     13   4011     27   47.06%      23      1
-    9071  1700014200.  900004341.5     13   4018     60   47.06%      54      1
-    9172  1700014200.  900004341.5     13   4135     32   47.06%      69      1
-    9274  1700014200.  900004341.5     13   4204     80   47.06%      19      1
-Elapsed time (sec): 1, estimated tree completion: 0.08221
-Heap usage: 199MB (peak 202MB, 1068KB system)
-B&B tree size: 10MB total
- 
-    Node     BestSoln    BestBound   Sols Active  Depth     Gap     GInf   Time
-    9374  1700014200.  900004341.5     13   4258     14   47.06%      57      1
-    9495  1700014200.  900004341.5     13   4327     60   47.06%      10      1
-    9602  1700014200.  900004341.5     13   4410     60   47.06%      12      1
-    9708  1700014200.  900004341.5     13   4479     52   47.06%      41      1
+    8849  1700014200.  900004341.5     13   3921     78   47.06%      31      2
 STOPPING - MAXTIME limit reached (TIMELIMIT=2.00  time=2.00).
 STOPPING - MAXTIME limit reached (TIMELIMIT=2.00  time=2.00).
- *** Search unfinished ***    Time:     2.02 Nodes:       9741
-Numerical issues encountered:
-   Dual failures    :      1 out of     31125 (ratio: 0.0000)
+ *** Search unfinished ***    Time:     2.00 Nodes:       8849
 Final MIP objective                   : 1.700014200000000e+09
 Final MIP bound                       : 9.000043415396020e+08
-  Solution time / primaldual integral :      2.02s/ 53.273638%
-  Work / work units per second        :      4.56 /      2.26
-  Number of solutions found / nodes   :        13 /      9741
+  Solution time / primaldual integral :      2.00s/ 53.535912%
+  Work / work units per second        :      4.39 /      2.20
+  Number of solutions found / nodes   :        13 /      8849
   Max primal violation      (abs/rel) :       0.0 /       0.0
   Max integer violation     (abs    ) :       0.0

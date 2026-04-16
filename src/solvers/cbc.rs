@@ -45,8 +45,11 @@ impl LogParser for CbcParser {
         // Status
         parse_status(text, &mut log);
 
-        // Result section: "Objective value: -104286.92120000"
+        // Result section: "Objective value: -104286.92120000" (MIP)
+        // or LP: "Optimal - objective value -5" / "Optimal objective -5"
         if let Some(c) = re_obj_value().captures(text) {
+            log.bounds.primal = c[1].parse().ok();
+        } else if let Some(c) = re_lp_obj().captures(text) {
             log.bounds.primal = c[1].parse().ok();
         }
         // "Lower bound: -111273.306"
@@ -259,6 +262,19 @@ fn parse_status(text: &str, log: &mut SolverLog) {
     if text.contains("Search completed") {
         log.termination.status = Status::Optimal;
         log.termination.raw_reason = Some("Search completed".into());
+        return;
+    }
+    // LP-only termination: "Optimal - objective value X" / "Optimal objective X"
+    if text.contains("Optimal - objective value") || text.contains("Optimal objective ") {
+        log.termination.status = Status::Optimal;
+        log.termination.raw_reason = Some("Optimal".into());
+        return;
+    }
+    // Infeasibility detected in presolve (no "Result -" line emitted):
+    //   "Problem is infeasible - 0.00 seconds"
+    if text.contains("Problem is infeasible") {
+        log.termination.status = Status::Infeasible;
+        log.termination.raw_reason = Some("Problem is infeasible".into());
     }
 }
 
@@ -336,6 +352,11 @@ fn re_processed() -> &'static Regex {
 fn re_obj_value() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"Objective value:\s+([-\d.eE+]+)").unwrap())
+}
+fn re_lp_obj() -> &'static Regex {
+    // CBC LP-only termination: "Optimal - objective value X" / "Optimal objective X"
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"Optimal(?:\s+-\s+| )objective(?:\s+value)?\s+([-\d.eE+]+)").unwrap())
 }
 
 fn re_lower_bound() -> &'static Regex {

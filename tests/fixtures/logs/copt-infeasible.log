@@ -1,0 +1,30 @@
+Setting log file to /Users/ghannam/projects/orlog/tests/fixtures/logs/copt-infeasible.log
+Reading from '/Users/ghannam/projects/orlog/tests/fixtures/infeasible.mps'
+Reading finished (0.00s)
+No license found. The size is limited to 2000 variables and 2000 constraints
+Please apply for a license from www.shanshu.ai/copt
+
+Model fingerprint: c0df1d8e
+
+Using Cardinal Optimizer v8.0.3 on macOS (15.6 Build 24G84 - arm64)
+The CPU model is Apple M4 Pro
+Hardware has 14 physical cores and 14 logical cores. Using instruction set ARMV8 (30)
+Minimizing a MIP problem
+
+The original problem has:
+    2 rows, 1 columns and 2 non-zero elements
+    1 binaries
+
+Starting the MIP solver with 14 threads and 32 tasks
+
+Presolving the problem
+
+Problem was solved during presolve
+
+Best solution   : +inf
+Best bound      : +inf
+Best gap        : 0.0000%
+Solve time      : 0.00
+Solve node      : 0
+MIP status      : solved
+Solution status : infeasible

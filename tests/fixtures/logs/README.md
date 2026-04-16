@@ -30,6 +30,24 @@ Termination strings vary per solver — `"node limit reached"` for most,
 `"Solution limit reached"` for HiGHS, `STOPPING - MAXNODE …` for Xpress —
 all should classify as `Status::OtherLimit`.
 
+### `<solver>-infeasible.log` — trivially infeasible MIP
+
+A 1-variable binary problem with `x ≥ 1` and `x ≤ 0` — every solver
+detects infeasibility in presolve. Validates `Status::Infeasible`
+classification and that parsers don't blow up when there's no primal
+or dual to extract.
+
+### `<solver>-lp.log` — pure LP (no integer variables)
+
+A 3-variable continuous LP with known optimum −5. Exercises the
+LP-only termination paths in solvers that support both MIP and LP:
+no B&B progress table, no cuts, no incumbents, just LP iterations and
+a final objective. Each solver uses different wording — Gurobi
+`Solved in N iterations`, COPT `Status: Optimal Objective: …`,
+HiGHS `Model status: Optimal`, Xpress `Dual solved problem` /
+`Final objective`, CBC `Optimal - objective value` — all classify as
+`Status::Optimal` with `primal == dual` and `gap = 0`.
+
 ## Currently-committed versions
 
 Each fixture log was produced by the solver version shown below — the

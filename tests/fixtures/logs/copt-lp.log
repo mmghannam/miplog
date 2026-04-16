@@ -1,0 +1,33 @@
+Setting log file to /Users/ghannam/projects/orlog/tests/fixtures/logs/copt-lp.log
+Reading from '/Users/ghannam/projects/orlog/tests/fixtures/tinylp.mps'
+Reading switch to free MPS format
+Reading finished (0.00s)
+No license found. LP size is limited to 10000 variables and 10000 constraints
+Please apply for a license from www.shanshu.ai/copt
+
+Model fingerprint: 14700546
+
+Using Cardinal Optimizer v8.0.3 on macOS (15.6 Build 24G84 - arm64)
+The CPU model is Apple M4 Pro
+Hardware has 14 physical cores and 14 logical cores. Using instruction set ARMV8 (30)
+Minimizing an LP problem
+
+The original problem has:
+    2 rows, 3 columns and 6 non-zero elements
+The presolved problem has:
+    2 rows, 3 columns and 6 non-zero elements
+
+Starting the simplex solver using up to 8 threads
+
+Problem info:
+    Range of matrix coefficients:    [1e+00,4e+00]
+    Range of rhs coefficients:       [2e+00,2e+01]
+    Range of bound coefficients:     [0e+00,0e+00]
+    Range of cost coefficients:      [1e+00,3e+00]
+
+Method   Iteration           Objective  Primal.NInf   Dual.NInf        Time
+Dual             0   -5.1000393392e+00            1           0       0.00s
+Dual             1   -5.0000385678e+00            0           0       0.00s
+
+Solving finished
+Status: Optimal  Objective: -5.0000000000e+00  Iterations: 1  Time: 0.00s

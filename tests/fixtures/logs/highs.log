@@ -42,7 +42,7 @@ Solving report
   Primal bound      7615
   Dual bound        7615
   Gap               0% (tolerance: 0.01%)
-  P-D integral      0.0296972530054
+  P-D integral      0.0288475466337
   Solution status   feasible
                     7615 (objective)
                     0 (bound viol.)

@@ -283,6 +283,76 @@ fn nodelimit_fixtures_parse_as_other_limit() {
     eprintln!("verified {total} node-limit fixtures");
 }
 
+/// `*-infeasible.log`: every fixture must classify as `Status::Infeasible`.
+/// No assertion on bounds — solvers vary on whether they emit a primal/dual
+/// for infeasible runs (some print +/- their inf sentinel).
+#[test]
+fn infeasible_fixtures_parse_as_infeasible() {
+    let dir = Path::new(LOGS_DIR);
+    if !dir.exists() {
+        return;
+    }
+    let mut total = 0;
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        let n = path.file_name().unwrap().to_string_lossy().into_owned();
+        if !n.ends_with("-infeasible.log") {
+            continue;
+        }
+        total += 1;
+        let text = std::fs::read_to_string(&path).unwrap();
+        let log = autodetect(&text)
+            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        assert_eq!(
+            log.termination.status,
+            Status::Infeasible,
+            "{n}: expected Infeasible, got {:?} ({:?})",
+            log.termination.status,
+            log.termination.raw_reason,
+        );
+    }
+    assert!(total >= 4, "expected ≥4 -infeasible.log fixtures, found {total}");
+    eprintln!("verified {total} infeasible fixtures");
+}
+
+/// `*-lp.log`: pure-LP runs (no integer variables). Should classify as
+/// `Status::Optimal` and have a primal objective. No B&B → progress table
+/// can be empty, no cuts expected.
+#[test]
+fn lp_fixtures_parse_as_optimal_lp() {
+    let dir = Path::new(LOGS_DIR);
+    if !dir.exists() {
+        return;
+    }
+    let mut total = 0;
+    for entry in std::fs::read_dir(dir).unwrap().flatten() {
+        let path = entry.path();
+        let n = path.file_name().unwrap().to_string_lossy().into_owned();
+        if !n.ends_with("-lp.log") {
+            continue;
+        }
+        total += 1;
+        let text = std::fs::read_to_string(&path).unwrap();
+        let log = autodetect(&text)
+            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        assert_eq!(
+            log.termination.status,
+            Status::Optimal,
+            "{n}: expected Optimal, got {:?} ({:?})",
+            log.termination.status,
+            log.termination.raw_reason,
+        );
+        let p = log.bounds.primal.unwrap_or_else(|| panic!("{n}: no primal"));
+        // The tiny LP has known optimal -5 (within solver tolerance).
+        assert!(
+            (p - (-5.0)).abs() < 0.01,
+            "{n}: primal {p} ≠ -5",
+        );
+    }
+    assert!(total >= 4, "expected ≥4 -lp.log fixtures, found {total}");
+    eprintln!("verified {total} LP fixtures");
+}
+
 /// Every generated log must satisfy the documented Core (`verify_common`)
 /// tier. A failure here means a parser isn't populating fields that the
 /// schema promises as reliably cross-solver — file as a parser bug.

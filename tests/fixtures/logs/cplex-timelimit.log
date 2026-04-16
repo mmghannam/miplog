@@ -105,24 +105,23 @@ Represolve time = 0.00 sec. (3.91 ticks)
 * 53648+34409                       1.60001e+09   8.00917e+08            49.94%
   55724 38559   9.50007e+08    55   1.60001e+09   8.00917e+08   423281   49.94%
 Starting limited solution polishing.
-* 66472+45149                       1.60001e+09   8.00917e+08            49.94%
 
 GUB cover cuts applied:  1
 Clique cuts applied:  3
 Cover cuts applied:  11
 Implied bound cuts applied:  115
-Flow cuts applied:  24
-Mixed integer rounding cuts applied:  238
+Flow cuts applied:  23
+Mixed integer rounding cuts applied:  239
 Gomory fractional cuts applied:  40
 
 Root node processing (before b&c):
-  Real time             =    0.03 sec. (36.34 ticks)
+  Real time             =    0.03 sec. (36.31 ticks)
 Parallel b&c, 14 threads:
-  Real time             =    1.97 sec. (3577.76 ticks)
-  Sync time (average)   =    0.31 sec.
-  Wait time (average)   =    0.01 sec.
+  Real time             =    1.98 sec. (3370.74 ticks)
+  Sync time (average)   =    0.32 sec.
+  Wait time (average)   =    0.04 sec.
                           ------------
-Total (root+branch&cut) =    2.00 sec. (3614.09 ticks)
+Total (root+branch&cut) =    2.01 sec. (3407.05 ticks)
 
-MIP - time limit exceeded:  Objective = 1.6000134333e+09
-Solution time = 0.00 sec.  Iterations = 560755  Nodes = 67370
+MIP - time limit exceeded:  Objective = 1.6000136000e+09
+Solution time = 0.00 sec.  Iterations = 526204  Nodes = 64338

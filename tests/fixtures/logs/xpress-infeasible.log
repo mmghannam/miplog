@@ -1,0 +1,19 @@
+FICO Xpress v9.8.1, Community, solve started 9:50:48, Apr 16, 2026
+Heap usage: 428KB (peak 428KB, 110KB system)
+Minimizing MILP infeasible using up to 14 threads and up to 24GB memory, with these control settings:
+OUTPUTLOG = 1
+NLPPOSTSOLVE = 1
+XSLP_DELETIONCONTROL = 0
+XSLP_OBJSENSE = 1
+Original problem has:
+         2 rows            1 cols            2 elements         1 entities
+ 
+ 
+The problem is infeasible due to row c2
+Presolve finished in 0 seconds
+Heap usage: 428KB (peak 428KB, 110KB system)
+ *** Search completed ***
+Problem is integer infeasible
+  Solution time / primaldual integral :      0.00s/ 100.000000%
+  Work / work units per second        :      0.00 /      0.00
+  Number of solutions found / nodes   :         0 /         0

@@ -1,0 +1,42 @@
+FICO Xpress v9.8.1, Community, solve started 9:50:48, Apr 16, 2026
+Heap usage: 428KB (peak 428KB, 112KB system)
+Minimizing LP tinylp using up to 14 threads and up to 24GB memory, with these control settings:
+OUTPUTLOG = 1
+NLPPOSTSOLVE = 1
+XSLP_DELETIONCONTROL = 0
+XSLP_OBJSENSE = 1
+Original problem has:
+         2 rows            3 cols            6 elements
+Presolved problem has:
+         2 rows            3 cols            6 elements
+Presolve finished in 0 seconds
+Heap usage: 428KB (peak 428KB, 112KB system)
+
+Coefficient range                    original                 solved        
+  Coefficients   [min,max] : [ 1.00e+00,  4.00e+00] / [ 5.00e-01,  1.00e+00]
+  RHS and bounds [min,max] : [ 2.00e+00,  2.00e+01] / [ 1.00e+00,  5.00e+00]
+  Objective      [min,max] : [ 1.00e+00,  3.00e+00] / [ 1.00e+00,  3.00e+00]
+Autoscaling applied standard scaling
+
+Starting concurrent solve with dual (1 thread)
+
+ Concurrent-Solve,   0s
+            Dual        
+    objective   dual inf
+ D -5.0000000   .0000000
+                        
+------- optimal --------
+Concurrent statistics:
+           Dual: 1 simplex iterations, 0.00s
+Uncrunching matrix
+Optimal solution found
+ 
+   Its         Obj Value      S   Ninf  Nneg   Sum Dual Inf  Time
+     1         -5.000000      D      0     0        .000000     0
+Dual solved problem
+  1 simplex iterations in 0.00 seconds at time 0
+
+Final objective                       : -5.000000000000000e+00
+  Max primal violation      (abs/rel) :       0.0 /       0.0
+  Max dual violation        (abs/rel) :       0.0 /       0.0
+  Max complementarity viol. (abs/rel) :       0.0 /       0.0

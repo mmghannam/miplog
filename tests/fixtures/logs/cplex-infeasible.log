@@ -1,0 +1,16 @@
+Version identifier: 22.1.2.0 | 2026-03-02 | af0ce9b93
+CPXPARAM_Read_DataCheck                          1
+Infeasibility row 'c2':  0 <= -1.
+Presolve time = 0.00 sec. (0.00 ticks)
+
+Root node processing (before b&c):
+  Real time             =    0.00 sec. (0.00 ticks)
+Parallel b&c, 14 threads:
+  Real time             =    0.00 sec. (0.00 ticks)
+  Sync time (average)   =    0.00 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =    0.00 sec. (0.00 ticks)
+
+MIP - integer infeasible:  Objective = nan
+Solution time = 0.00 sec.  Iterations = 0  Nodes = 0

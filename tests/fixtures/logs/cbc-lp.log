@@ -1,0 +1,21 @@
+Welcome to the CBC MILP Solver 
+Version: 2.10.13 
+Build Date: Mar 11 2026 
+
+command line - cbc /Users/ghannam/projects/orlog/tests/fixtures/tinylp.mps solve solution /var/folders/vn/lylbxb6n3g98kkqt5_qvrv6w0000gp/T/tmp_84d9lkt.sol (default strategy 1)
+At line 1 NAME          tinylp
+At line 10 ROWS
+At line 14 COLUMNS
+At line 21 RHS
+At line 24 BOUNDS
+At line 25 ENDATA
+Problem tinylp has 2 rows, 3 columns and 6 elements
+Coin0008I tinylp read with 0 errors
+Presolve 2 (0) rows, 3 (0) columns and 6 (0) elements
+0  Obj 0 Primal inf 0.9999999 (1) Dual inf 0.9999999 (1)
+0  Obj 0 Primal inf 0.9999999 (1) Dual inf 2.5e+10 (3)
+3  Obj -5
+Optimal - objective value -5
+Optimal objective -5 - 3 iterations time 0.002
+Total time (CPU seconds):       0.00   (Wallclock seconds):       0.00
+

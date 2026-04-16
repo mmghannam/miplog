@@ -30,6 +30,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 P0201 = HERE / "fixtures" / "p0201.mps"
 GLASS4 = HERE / "fixtures" / "glass4.mps"
+INFEASIBLE = HERE / "fixtures" / "infeasible.mps"
+TINYLP = HERE / "fixtures" / "tinylp.mps"
 
 
 # ---------------------------------------------------------------------------
@@ -269,6 +271,13 @@ def main():
         # code paths. Solvers that don't expose a node-limit knob via their
         # API simply produce no fixture.
         (GLASS4, None, 5, "-nodelimit"),
+        # Trivially infeasible MIP — exercises `Status::Infeasible` paths
+        # and ensures parsers don't blow up when there's no primal/dual.
+        (INFEASIBLE, None, None, "-infeasible"),
+        # Pure LP (no integer variables) — exercises the LP-only code paths
+        # in solvers that handle both MIP and LP. No B&B, no incumbents,
+        # no cuts; usually a much shorter log shape.
+        (TINYLP, None, None, "-lp"),
     ]
 
     for mps, time_limit, node_limit, suffix in suites:

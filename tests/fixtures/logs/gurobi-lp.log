@@ -1,0 +1,25 @@
+
+Gurobi 12.0.3 (mac64[arm]) logging started Thu Apr 16 09:50:48 2026
+
+Set parameter LogFile to value "/Users/ghannam/projects/orlog/tests/fixtures/logs/gurobi-lp.log"
+Gurobi Optimizer version 12.0.3 build v12.0.3rc0 (mac64[arm] - Darwin 24.6.0 24G84)
+
+CPU model: Apple M4 Pro
+Thread count: 14 physical cores, 14 logical processors, using up to 14 threads
+
+Optimize a model with 2 rows, 3 columns and 6 nonzeros
+Model fingerprint: 0x5a2e4b7d
+Coefficient statistics:
+  Matrix range     [1e+00, 4e+00]
+  Objective range  [1e+00, 3e+00]
+  Bounds range     [0e+00, 0e+00]
+  RHS range        [2e+00, 2e+01]
+Presolve time: 0.00s
+Presolved: 2 rows, 3 columns, 6 nonzeros
+
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0   -1.0000000e+30   1.000000e+30   1.000000e+00      0s
+       1   -5.0000000e+00   0.000000e+00   0.000000e+00      0s
+
+Solved in 1 iterations and 0.00 seconds (0.00 work units)
+Optimal objective -5.000000000e+00

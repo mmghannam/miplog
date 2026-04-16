@@ -58,6 +58,22 @@ impl LogParser for HighsParser {
         if let Some(c) = re_dual_bound().captures(text) {
             log.bounds.dual = c[1].parse().ok();
         }
+        // LP-only fallback: "Objective value     :  -5.0e+00" + LP optimality
+        // is duality-tight, so mirror into both bounds.
+        if log.bounds.primal.is_none() {
+            if let Some(c) = re_lp_obj_value().captures(text) {
+                let v: Option<f64> = c[1].parse().ok();
+                log.bounds.primal = v;
+                if log.bounds.dual.is_none() {
+                    log.bounds.dual = v;
+                }
+                if log.bounds.gap.is_none()
+                    && log.termination.status == Status::Optimal
+                {
+                    log.bounds.gap = Some(0.0);
+                }
+            }
+        }
         if let Some(c) = re_gap().captures(text) {
             log.bounds.gap = c[1].parse::<f64>().ok().map(|v| v / 100.0);
         }
@@ -281,7 +297,10 @@ fn parse_status(text: &str, log: &mut SolverLog) {
             return;
         }
         if let Some(rest) = trimmed.strip_prefix("Model status") {
-            let status_str = rest.trim_start_matches(':').trim();
+            // "Model status        : Optimal" → strip leading whitespace
+            // BEFORE the colon; previously the trim ran in the wrong order
+            // and left ": Optimal" as the status string.
+            let status_str = rest.trim_start().trim_start_matches(':').trim();
             set_status(status_str, log);
             return;
         }
@@ -450,6 +469,12 @@ fn re_presolve_reductions() -> &'static Regex {
 fn re_primal_bound() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"Primal bound\s+([-\d.eE+]+)").unwrap())
+}
+
+fn re_lp_obj_value() -> &'static Regex {
+    // LP-only termination: "Objective value     :  -5.0000000000e+00"
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"(?m)^Objective value\s*:\s*([-\d.eE+]+)").unwrap())
 }
 
 fn re_dual_bound() -> &'static Regex {

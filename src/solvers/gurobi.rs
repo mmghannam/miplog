@@ -27,7 +27,11 @@ impl LogParser for GurobiParser {
         }
 
         // Status
-        if text.contains("Optimal solution found") {
+        if text.contains("Optimal solution found")
+            // LP-only completion: Gurobi prints "Optimal objective X" without
+            // the MIP "Optimal solution found" phrase.
+            || (text.contains("Optimal objective") && !text.contains("Solution count"))
+        {
             log.termination.status = Status::Optimal;
         } else if text.contains("Model is infeasible and unbounded")
             || text.contains("Model is infeasible or unbounded")
@@ -63,12 +67,26 @@ impl LogParser for GurobiParser {
             log.tree.simplex_iterations = c[2].replace(',', "").parse().ok();
             log.timing.wall_seconds = c[3].parse().ok();
         }
+        // LP-only fallback: "Solved in 1 iterations and 0.00 seconds"
+        if log.timing.wall_seconds.is_none() {
+            if let Some(c) = re_lp_solved().captures(text) {
+                log.tree.simplex_iterations = c[1].replace(',', "").parse().ok();
+                log.timing.wall_seconds = c[2].parse().ok();
+            }
+        }
 
-        // Bounds: "Best objective X, best bound Y, gap Z%"
+        // Bounds: "Best objective X, best bound Y, gap Z%" (MIP)
         if let Some(c) = re_best().captures(text) {
             log.bounds.primal = parse_opt_f64(&c[1]);
             log.bounds.dual = parse_opt_f64(&c[2]);
             log.bounds.gap = parse_opt_f64(&c[3]).map(|p| p / 100.0);
+        } else if let Some(c) = re_lp_optimal_obj().captures(text) {
+            // LP-only: "Optimal objective -5.000000000e+00" — no dual line,
+            // but LP optimality is duality-tight so mirror into both.
+            let v: Option<f64> = c[1].parse().ok();
+            log.bounds.primal = v;
+            log.bounds.dual = v;
+            log.bounds.gap = Some(0.0);
         }
 
         // Solutions found: "Solution count N:"
@@ -250,6 +268,21 @@ fn re_best() -> &'static Regex {
 fn re_solcount() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| Regex::new(r"Solution count\s+(\d+)").unwrap())
+}
+fn re_lp_solved() -> &'static Regex {
+    // LP-only termination summary:
+    // "Solved in 1 iterations and 0.00 seconds (0.00 work units)"
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| {
+        Regex::new(r"Solved in\s+([\d,]+)\s+iterations? and\s+([\d.]+)\s+seconds")
+            .unwrap()
+    })
+}
+fn re_lp_optimal_obj() -> &'static Regex {
+    // LP-only completion. Gurobi prints "Optimal objective <value>"
+    // (no comma, no "best bound") instead of the MIP "Best objective ..." line.
+    static R: OnceLock<Regex> = OnceLock::new();
+    R.get_or_init(|| Regex::new(r"Optimal objective\s+([-\d.eE+]+)").unwrap())
 }
 fn re_presolved() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
