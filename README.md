@@ -43,33 +43,31 @@ output::write_json_gz("run.mlog", &log)?;     // archival storage
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
-Example `Display` output on a SCIP 10 run (shape is identical across solvers —
+Example `Display` output on a SCIP 11 run (shape is identical across solvers —
 any solver's `Display` renders the same fields in the same order):
 
 ```
-scip 10.0.0
-  problem    : p_30n20b8
-  status     : Optimal (optimal solution found)
-  time       : wall=448.93s presolve=10.16s
-  bounds     : primal=302.00 dual=302.00 gap=0.00%
-  presolve   : rows 576 → 487  cols 18380 → 4579  nnz - → -
-  tree       : nodes=- simplex_iters=- sols=4
-  parsed by  : miplog 0.1.0 (abc123def456)
+solver: scip 11.0.0
+problem: p0201
+status: optimal in 0.55s
+obj: 7615
+sols: 13
+presolve: 133→107 rows, 201→183 cols
+convergence: ██▄▄▄▄▂▂▂▂▂▂▂▂▁▁▁▁▁▁
 ```
 
-If the solver emitted a B&B progress table, it's rendered below as a compact,
-columnar view — head + tail with the middle elided and every incumbent-update
-row (Heuristic `H`, branch-found-solution `*`) kept:
+If the solver emitted a B&B progress table, it's rendered below as a compact
+columnar view — incumbent-update rows (`H` heuristic, `*` branch solution) are
+always kept; identical-looking interior rows are elided:
 
 ```
-  progress   : 231 rows (last at 120.00s)
-        time       nodes        open          primal            dual      gap  event
-        0.00           0           0               -          302.00        -
-        0.00           0           2          553.00          302.00    45.4%
-        0.00          38          41          402.00          302.00    24.9%  H
-    … 220 rows elided …
-      115.00       53600      210000         302.00          302.00     0.00%
-      120.00       53747      210000         302.00          302.00     0.00%
+       time     nodes         primal           dual     gap  event
+       0.00         1              -     8.000024e8       -
+       0.00         1     4.450042e9     8.000024e8  456.2%  H
+    … same for 4 more rows …
+       0.90         1     4.350038e9     8.000049e8  443.8%  H
+    … same for 3 more rows …
+       2.00         1     4.350038e9     8.000049e8  443.8%
 ```
 
 ## Schema
@@ -91,8 +89,9 @@ The core type is `SolverLog`:
 - `cuts: BTreeMap<String, u64>` — freeform per-family cut counts
   (solver-specific taxonomies don't map cleanly, we preserve raw labels)
 - `progress: ProgressTable` — **columnar** B&B progress (see below)
-- `extras: Option<serde_json::Value>` — escape hatch for anything
-  solver-specific that doesn't fit the common vocabulary
+- `other_data: Vec<NamedValue>` — escape hatch for solver-specific data that
+  doesn't fit the common vocabulary; each entry is `{ name, value }` where
+  `value` is freeform JSON. Skipped by the text format; use JSON for full fidelity.
 - `parser: ParserInfo { version, git_hash }` — captures which build of
   `miplog` produced the parse, so persisted `.mlog` files stay reproducible
   across parser changes
