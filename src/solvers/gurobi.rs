@@ -129,12 +129,7 @@ impl LogParser for GurobiParser {
 
         // Max depth reached: take max over progress Depth column (Gurobi
         // doesn't report this separately).
-        let max_depth = log
-            .progress
-            .depth
-            .iter()
-            .filter_map(|d| *d)
-            .max();
+        let max_depth = log.progress.depth.iter().filter_map(|d| *d).max();
         log.tree.max_depth = max_depth;
 
         // Cuts: "Cutting planes: Gomory 9, Cover 2, MIR 24, ..."
@@ -274,8 +269,7 @@ fn re_lp_solved() -> &'static Regex {
     // "Solved in 1 iterations and 0.00 seconds (0.00 work units)"
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
-        Regex::new(r"Solved in\s+([\d,]+)\s+iterations? and\s+([\d.]+)\s+seconds")
-            .unwrap()
+        Regex::new(r"Solved in\s+([\d,]+)\s+iterations? and\s+([\d.]+)\s+seconds").unwrap()
     })
 }
 fn re_lp_optimal_obj() -> &'static Regex {
@@ -347,23 +341,28 @@ fn parse_cuts(text: &str) -> std::collections::BTreeMap<String, u64> {
 
 fn populate_other_data(text: &str, log: &mut SolverLog) {
     if let Some(v) = parse_coefficient_ranges(text) {
-        log.other_data.push(NamedValue::new("gurobi.coefficient_ranges", v));
+        log.other_data
+            .push(NamedValue::new("gurobi.coefficient_ranges", v));
     }
     let (before, after) = parse_variable_types(text);
     if let Some(v) = before {
-        log.other_data.push(NamedValue::new("gurobi.variable_types_before_presolve", v));
+        log.other_data
+            .push(NamedValue::new("gurobi.variable_types_before_presolve", v));
     }
     if let Some(v) = after {
-        log.other_data.push(NamedValue::new("gurobi.variable_types_after_presolve", v));
+        log.other_data
+            .push(NamedValue::new("gurobi.variable_types_after_presolve", v));
     }
     if let Some(v) = parse_cpu_info(text) {
         log.other_data.push(NamedValue::new("gurobi.machine", v));
     }
     if let Some(v) = parse_heuristic_solutions(text) {
-        log.other_data.push(NamedValue::new("gurobi.pre_bb_heuristic_solutions", v));
+        log.other_data
+            .push(NamedValue::new("gurobi.pre_bb_heuristic_solutions", v));
     }
     if let Some(v) = parse_solution_pool(text) {
-        log.other_data.push(NamedValue::new("gurobi.solution_pool", v));
+        log.other_data
+            .push(NamedValue::new("gurobi.solution_pool", v));
     }
     if let Some(c) = re_fingerprint().captures(text) {
         log.other_data.push(NamedValue::new(
@@ -397,7 +396,8 @@ fn populate_other_data(text: &str, log: &mut SolverLog) {
 fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
     let hdr = Regex::new(r"(?m)^Coefficient statistics:").unwrap();
     let m = hdr.find(text)?;
-    let row = Regex::new(r"^\s+(Matrix|Objective|Bounds|RHS) range\s+\[([^,]+),\s*([^\]]+)\]").unwrap();
+    let row =
+        Regex::new(r"^\s+(Matrix|Objective|Bounds|RHS) range\s+\[([^,]+),\s*([^\]]+)\]").unwrap();
     let mut obj = serde_json::Map::new();
     for line in text[m.end()..].lines().skip(1).take(8) {
         if line.trim().is_empty() {
@@ -419,24 +419,41 @@ fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
 
 /// "Variable types:" lines (Gurobi prints two — before and after presolve).
 fn parse_variable_types(text: &str) -> (Option<serde_json::Value>, Option<serde_json::Value>) {
-    let re = Regex::new(
-        r"Variable types:\s+(\d+)\s+continuous,\s+(\d+)\s+integer\s+\((\d+)\s+binary\)",
-    )
-    .unwrap();
+    let re =
+        Regex::new(r"Variable types:\s+(\d+)\s+continuous,\s+(\d+)\s+integer\s+\((\d+)\s+binary\)")
+            .unwrap();
     let mut caps: Vec<_> = re.captures_iter(text).collect();
     let before = caps.first().map(|c| {
         let mut o = serde_json::Map::new();
-        o.insert("continuous".into(), serde_json::Value::from(c[1].parse::<u64>().unwrap_or(0)));
-        o.insert("integer".into(), serde_json::Value::from(c[2].parse::<u64>().unwrap_or(0)));
-        o.insert("binary".into(), serde_json::Value::from(c[3].parse::<u64>().unwrap_or(0)));
+        o.insert(
+            "continuous".into(),
+            serde_json::Value::from(c[1].parse::<u64>().unwrap_or(0)),
+        );
+        o.insert(
+            "integer".into(),
+            serde_json::Value::from(c[2].parse::<u64>().unwrap_or(0)),
+        );
+        o.insert(
+            "binary".into(),
+            serde_json::Value::from(c[3].parse::<u64>().unwrap_or(0)),
+        );
         serde_json::Value::Object(o)
     });
     let after = if caps.len() >= 2 {
         let c = caps.pop().unwrap();
         let mut o = serde_json::Map::new();
-        o.insert("continuous".into(), serde_json::Value::from(c[1].parse::<u64>().unwrap_or(0)));
-        o.insert("integer".into(), serde_json::Value::from(c[2].parse::<u64>().unwrap_or(0)));
-        o.insert("binary".into(), serde_json::Value::from(c[3].parse::<u64>().unwrap_or(0)));
+        o.insert(
+            "continuous".into(),
+            serde_json::Value::from(c[1].parse::<u64>().unwrap_or(0)),
+        );
+        o.insert(
+            "integer".into(),
+            serde_json::Value::from(c[2].parse::<u64>().unwrap_or(0)),
+        );
+        o.insert(
+            "binary".into(),
+            serde_json::Value::from(c[3].parse::<u64>().unwrap_or(0)),
+        );
         Some(serde_json::Value::Object(o))
     } else {
         None
@@ -452,12 +469,24 @@ fn parse_cpu_info(text: &str) -> Option<serde_json::Value> {
     .unwrap();
     let mut obj = serde_json::Map::new();
     if let Some(c) = cpu_re.captures(text) {
-        obj.insert("cpu".into(), serde_json::Value::String(c[1].trim().to_string()));
+        obj.insert(
+            "cpu".into(),
+            serde_json::Value::String(c[1].trim().to_string()),
+        );
     }
     if let Some(c) = thr_re.captures(text) {
-        obj.insert("physical_cores".into(), serde_json::Value::from(c[1].parse::<u64>().unwrap_or(0)));
-        obj.insert("logical_processors".into(), serde_json::Value::from(c[2].parse::<u64>().unwrap_or(0)));
-        obj.insert("threads_used".into(), serde_json::Value::from(c[3].parse::<u64>().unwrap_or(0)));
+        obj.insert(
+            "physical_cores".into(),
+            serde_json::Value::from(c[1].parse::<u64>().unwrap_or(0)),
+        );
+        obj.insert(
+            "logical_processors".into(),
+            serde_json::Value::from(c[2].parse::<u64>().unwrap_or(0)),
+        );
+        obj.insert(
+            "threads_used".into(),
+            serde_json::Value::from(c[3].parse::<u64>().unwrap_or(0)),
+        );
     }
     (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
 }
@@ -502,9 +531,7 @@ fn re_fingerprint() -> &'static Regex {
 
 fn re_optimal_tolerance() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| {
-        Regex::new(r"Optimal solution found \(tolerance\s+([0-9.eE+\-]+)\)").unwrap()
-    })
+    R.get_or_init(|| Regex::new(r"Optimal solution found \(tolerance\s+([0-9.eE+\-]+)\)").unwrap())
 }
 
 fn re_work_units() -> &'static Regex {

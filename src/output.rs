@@ -1,8 +1,8 @@
 //! Write and read [`SolverLog`] to disk in JSON, optionally gzipped.
 //!
 //! Gzipped JSON is the recommended default for archival — the columnar
-//! [`ProgressTable`] compresses extremely well (repeated monotonic times,
-//! dense Option<T> columns).
+//! [`crate::schema::ProgressTable`] compresses extremely well (repeated monotonic times,
+//! dense `Option<T>` columns).
 
 use crate::SolverLog;
 use flate2::{read::GzDecoder, write::GzEncoder, Compression};

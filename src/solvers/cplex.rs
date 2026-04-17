@@ -164,47 +164,66 @@ impl LogParser for CplexParser {
 
 fn populate_other_data(text: &str, log: &mut SolverLog) {
     if let Some(v) = parse_search_config(text) {
-        log.other_data.push(NamedValue::new("cplex.search_config", v));
+        log.other_data
+            .push(NamedValue::new("cplex.search_config", v));
     }
     if let Some(v) = parse_integer_breakdown(text) {
-        log.other_data.push(NamedValue::new("cplex.variable_types_after_presolve", v));
+        log.other_data
+            .push(NamedValue::new("cplex.variable_types_after_presolve", v));
     }
     if let Some(v) = parse_presolve_details(text) {
-        log.other_data.push(NamedValue::new("cplex.presolve_details", v));
+        log.other_data
+            .push(NamedValue::new("cplex.presolve_details", v));
     }
     if let Some(v) = parse_probing(text) {
         log.other_data.push(NamedValue::new("cplex.probing", v));
     }
     if let Some(v) = parse_clique_table(text) {
-        log.other_data.push(NamedValue::new("cplex.clique_table_members", v));
+        log.other_data
+            .push(NamedValue::new("cplex.clique_table_members", v));
     }
     if let Some(v) = parse_heuristic_solutions(text) {
         log.other_data.push(NamedValue::new("cplex.incumbents", v));
     }
     if let Some(v) = parse_ticks(text) {
-        log.other_data.push(NamedValue::new("cplex.deterministic_ticks", v));
+        log.other_data
+            .push(NamedValue::new("cplex.deterministic_ticks", v));
     }
     if let Some(v) = parse_timing_breakdown(text) {
-        log.other_data.push(NamedValue::new("cplex.timing_breakdown", v));
+        log.other_data
+            .push(NamedValue::new("cplex.timing_breakdown", v));
     }
 }
 
 /// Search config: MIP emphasis, search method, parallel mode, threads.
 fn parse_search_config(text: &str) -> Option<serde_json::Value> {
     let mut obj = serde_json::Map::new();
-    if let Some(c) = Regex::new(r"MIP emphasis:\s+(.+?)\.").unwrap().captures(text) {
-        obj.insert("mip_emphasis".into(), serde_json::Value::String(c[1].trim().to_string()));
-    }
-    if let Some(c) = Regex::new(r"MIP search method:\s+(.+?)\.").unwrap().captures(text) {
-        obj.insert("search_method".into(), serde_json::Value::String(c[1].trim().to_string()));
-    }
-    if let Some(c) = Regex::new(
-        r"Parallel mode:\s+([^,]+),\s+using up to (\d+) threads?",
-    )
-    .unwrap()
-    .captures(text)
+    if let Some(c) = Regex::new(r"MIP emphasis:\s+(.+?)\.")
+        .unwrap()
+        .captures(text)
     {
-        obj.insert("parallel_mode".into(), serde_json::Value::String(c[1].trim().to_string()));
+        obj.insert(
+            "mip_emphasis".into(),
+            serde_json::Value::String(c[1].trim().to_string()),
+        );
+    }
+    if let Some(c) = Regex::new(r"MIP search method:\s+(.+?)\.")
+        .unwrap()
+        .captures(text)
+    {
+        obj.insert(
+            "search_method".into(),
+            serde_json::Value::String(c[1].trim().to_string()),
+        );
+    }
+    if let Some(c) = Regex::new(r"Parallel mode:\s+([^,]+),\s+using up to (\d+) threads?")
+        .unwrap()
+        .captures(text)
+    {
+        obj.insert(
+            "parallel_mode".into(),
+            serde_json::Value::String(c[1].trim().to_string()),
+        );
         obj.insert("threads".into(), parse_f64_json(&c[2]));
     }
     (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
@@ -237,8 +256,14 @@ fn parse_presolve_details(text: &str) -> Option<serde_json::Value> {
         eliminated_cols += c[2].parse::<u64>().unwrap_or(0);
     }
     if eliminated_rows > 0 || eliminated_cols > 0 {
-        obj.insert("eliminated_rows".into(), serde_json::Value::from(eliminated_rows));
-        obj.insert("eliminated_cols".into(), serde_json::Value::from(eliminated_cols));
+        obj.insert(
+            "eliminated_rows".into(),
+            serde_json::Value::from(eliminated_rows),
+        );
+        obj.insert(
+            "eliminated_cols".into(),
+            serde_json::Value::from(eliminated_cols),
+        );
     }
     if let Some(c) = Regex::new(r"MIP Presolve modified (\d+) coefficients?")
         .unwrap()
@@ -269,16 +294,16 @@ fn parse_probing(text: &str) -> Option<serde_json::Value> {
 }
 
 fn parse_clique_table(text: &str) -> Option<serde_json::Value> {
-    let c = Regex::new(r"Clique table members:\s+(\d+)").unwrap().captures(text)?;
+    let c = Regex::new(r"Clique table members:\s+(\d+)")
+        .unwrap()
+        .captures(text)?;
     Some(parse_f64_json(&c[1]))
 }
 
 fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
     // "Found incumbent of value X after T sec."
-    let re = Regex::new(
-        r"Found incumbent of value\s+([\d.eE+\-]+)\s+after\s+([\d.]+)\s+sec",
-    )
-    .unwrap();
+    let re =
+        Regex::new(r"Found incumbent of value\s+([\d.eE+\-]+)\s+after\s+([\d.]+)\s+sec").unwrap();
     let mut arr: Vec<serde_json::Value> = Vec::new();
     for c in re.captures_iter(text) {
         let mut o = serde_json::Map::new();
@@ -302,19 +327,16 @@ fn parse_ticks(text: &str) -> Option<serde_json::Value> {
 /// "Parallel b&c, 14 threads: Real time = 0.00 sec."
 fn parse_timing_breakdown(text: &str) -> Option<serde_json::Value> {
     let mut obj = serde_json::Map::new();
-    if let Some(c) = Regex::new(
-        r"Root node processing \(before b&c\):\s*\n\s*Real time\s*=\s*([\d.]+)",
-    )
-    .unwrap()
-    .captures(text)
+    if let Some(c) =
+        Regex::new(r"Root node processing \(before b&c\):\s*\n\s*Real time\s*=\s*([\d.]+)")
+            .unwrap()
+            .captures(text)
     {
         obj.insert("root_node_time".into(), parse_f64_json(&c[1]));
     }
-    if let Some(c) = Regex::new(
-        r"Parallel b&c,\s+\d+\s+threads?:\s*\n\s*Real time\s*=\s*([\d.]+)",
-    )
-    .unwrap()
-    .captures(text)
+    if let Some(c) = Regex::new(r"Parallel b&c,\s+\d+\s+threads?:\s*\n\s*Real time\s*=\s*([\d.]+)")
+        .unwrap()
+        .captures(text)
     {
         obj.insert("parallel_bc_time".into(), parse_f64_json(&c[1]));
     }
@@ -333,8 +355,7 @@ fn parse_f64_json(s: &str) -> serde_json::Value {
 fn re_first_incumbent() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
-        Regex::new(r"Found incumbent of value\s+([\d.eE+\-]+)\s+after\s+([\d.]+)\s+sec")
-            .unwrap()
+        Regex::new(r"Found incumbent of value\s+([\d.eE+\-]+)\s+after\s+([\d.]+)\s+sec").unwrap()
     })
 }
 
@@ -599,9 +620,7 @@ fn re_total_time() -> &'static Regex {
     // "Total (root+branch&cut) = 2.00 sec. (3325.32 ticks)" — the canonical
     // CPLEX MIP wall time at termination.
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| {
-        Regex::new(r"Total\s*\(root\+branch&cut\)\s*=\s*([\d.]+)\s+sec").unwrap()
-    })
+    R.get_or_init(|| Regex::new(r"Total\s*\(root\+branch&cut\)\s*=\s*([\d.]+)\s+sec").unwrap())
 }
 
 #[cfg(test)]

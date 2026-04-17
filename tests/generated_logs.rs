@@ -214,8 +214,7 @@ fn timelimit_fixtures_parse_as_time_limit() {
         }
         total += 1;
         let text = std::fs::read_to_string(&path).unwrap();
-        let log = autodetect(&text)
-            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        let log = autodetect(&text).unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
         assert_eq!(
             log.termination.status,
             Status::TimeLimit,
@@ -242,7 +241,10 @@ fn timelimit_fixtures_parse_as_time_limit() {
             "{n}: wall_seconds {wall} suspiciously small for a time-limited run",
         );
     }
-    assert!(total >= 4, "expected ≥4 -timelimit.log fixtures, found {total}");
+    assert!(
+        total >= 4,
+        "expected ≥4 -timelimit.log fixtures, found {total}"
+    );
     eprintln!("verified {total} time-limit fixtures");
 }
 
@@ -265,8 +267,7 @@ fn nodelimit_fixtures_parse_as_other_limit() {
         }
         total += 1;
         let text = std::fs::read_to_string(&path).unwrap();
-        let log = autodetect(&text)
-            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        let log = autodetect(&text).unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
         assert_eq!(
             log.termination.status,
             Status::OtherLimit,
@@ -279,7 +280,10 @@ fn nodelimit_fixtures_parse_as_other_limit() {
         let gap = log.bounds.effective_gap().unwrap_or(0.0);
         assert!(gap > 0.001, "{n}: should have a non-trivial gap, got {gap}");
     }
-    assert!(total >= 4, "expected ≥4 -nodelimit.log fixtures, found {total}");
+    assert!(
+        total >= 4,
+        "expected ≥4 -nodelimit.log fixtures, found {total}"
+    );
     eprintln!("verified {total} node-limit fixtures");
 }
 
@@ -301,8 +305,7 @@ fn infeasible_fixtures_parse_as_infeasible() {
         }
         total += 1;
         let text = std::fs::read_to_string(&path).unwrap();
-        let log = autodetect(&text)
-            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        let log = autodetect(&text).unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
         assert_eq!(
             log.termination.status,
             Status::Infeasible,
@@ -311,7 +314,10 @@ fn infeasible_fixtures_parse_as_infeasible() {
             log.termination.raw_reason,
         );
     }
-    assert!(total >= 4, "expected ≥4 -infeasible.log fixtures, found {total}");
+    assert!(
+        total >= 4,
+        "expected ≥4 -infeasible.log fixtures, found {total}"
+    );
     eprintln!("verified {total} infeasible fixtures");
 }
 
@@ -355,8 +361,8 @@ fn concat_fixtures_split_and_parse() {
                 "{n}[{i}]: instance {:?} doesn't end with {expected_inst}",
                 entry.instance,
             );
-            let log = autodetect(&entry.text)
-                .unwrap_or_else(|e| panic!("{n}[{i}]: parse failed: {e}"));
+            let log =
+                autodetect(&entry.text).unwrap_or_else(|e| panic!("{n}[{i}]: parse failed: {e}"));
             assert_eq!(
                 log.termination.status, *expected_status,
                 "{n}[{i}] ({}): expected {expected_status:?}, got {:?}",
@@ -364,7 +370,10 @@ fn concat_fixtures_split_and_parse() {
             );
         }
     }
-    assert!(total >= 4, "expected ≥4 -concat.log fixtures, found {total}");
+    assert!(
+        total >= 4,
+        "expected ≥4 -concat.log fixtures, found {total}"
+    );
     eprintln!("verified {total} concatenated fixtures");
 }
 
@@ -386,8 +395,7 @@ fn lp_fixtures_parse_as_optimal_lp() {
         }
         total += 1;
         let text = std::fs::read_to_string(&path).unwrap();
-        let log = autodetect(&text)
-            .unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
+        let log = autodetect(&text).unwrap_or_else(|e| panic!("autodetect {n}: {e}"));
         assert_eq!(
             log.termination.status,
             Status::Optimal,
@@ -395,12 +403,12 @@ fn lp_fixtures_parse_as_optimal_lp() {
             log.termination.status,
             log.termination.raw_reason,
         );
-        let p = log.bounds.primal.unwrap_or_else(|| panic!("{n}: no primal"));
+        let p = log
+            .bounds
+            .primal
+            .unwrap_or_else(|| panic!("{n}: no primal"));
         // The tiny LP has known optimal -5 (within solver tolerance).
-        assert!(
-            (p - (-5.0)).abs() < 0.01,
-            "{n}: primal {p} ≠ -5",
-        );
+        assert!((p - (-5.0)).abs() < 0.01, "{n}: primal {p} ≠ -5",);
     }
     assert!(total >= 4, "expected ≥4 -lp.log fixtures, found {total}");
     eprintln!("verified {total} LP fixtures");
@@ -412,7 +420,9 @@ fn lp_fixtures_parse_as_optimal_lp() {
 #[test]
 fn generated_all_pass_verify_common() {
     let dir = Path::new(LOGS_DIR);
-    if !dir.exists() { return; }
+    if !dir.exists() {
+        return;
+    }
     let mut failures: Vec<String> = Vec::new();
     for entry in std::fs::read_dir(dir).unwrap().flatten() {
         let path = entry.path();

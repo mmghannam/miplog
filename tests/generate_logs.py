@@ -32,6 +32,7 @@ P0201 = HERE / "fixtures" / "p0201.mps"
 GLASS4 = HERE / "fixtures" / "glass4.mps"
 INFEASIBLE = HERE / "fixtures" / "infeasible.mps"
 TINYLP = HERE / "fixtures" / "tinylp.mps"
+UNBOUNDED = HERE / "fixtures" / "unbounded.mps"
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +279,10 @@ def main():
         # in solvers that handle both MIP and LP. No B&B, no incumbents,
         # no cuts; usually a much shorter log shape.
         (TINYLP, None, None, "-lp"),
+        # Trivially unbounded LP — exercises `Status::Unbounded` paths.
+        # Solvers vary: some detect in presolve, some at root LP, some
+        # produce "infeasible or unbounded" without distinguishing.
+        (UNBOUNDED, None, None, "-unbounded"),
     ]
 
     # Stitched after individual suites finish — wraps each solver's existing

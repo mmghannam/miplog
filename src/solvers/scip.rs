@@ -178,9 +178,7 @@ fn parse_simplex_iters(text: &str) -> Option<u64> {
 fn parse_cuts(text: &str) -> std::collections::BTreeMap<String, u64> {
     let mut out = std::collections::BTreeMap::new();
     static HDR: OnceLock<Regex> = OnceLock::new();
-    let hdr = HDR.get_or_init(|| {
-        Regex::new(r"(?m)^Separators\s*:\s+ExecTime.*?Applied").unwrap()
-    });
+    let hdr = HDR.get_or_init(|| Regex::new(r"(?m)^Separators\s*:\s+ExecTime.*?Applied").unwrap());
     let Some(m) = hdr.find(text) else {
         return out;
     };
@@ -422,10 +420,16 @@ fn parse_tree_details(text: &str, log: &mut SolverLog) {
     //   nodes            :         29 (15 internal, 14 leaves)
     //   ...
     //   max depth        :          7
-    if let Some(c) = Regex::new(r"number of runs\s*:\s*(\d+)").unwrap().captures(text) {
+    if let Some(c) = Regex::new(r"number of runs\s*:\s*(\d+)")
+        .unwrap()
+        .captures(text)
+    {
         log.tree.restarts = c[1].parse().ok();
     }
-    if let Some(c) = Regex::new(r"(?m)^\s*max depth\s*:\s*(\d+)").unwrap().captures(text) {
+    if let Some(c) = Regex::new(r"(?m)^\s*max depth\s*:\s*(\d+)")
+        .unwrap()
+        .captures(text)
+    {
         log.tree.max_depth = c[1].parse().ok();
     }
 }
@@ -452,37 +456,76 @@ fn populate_other_data(text: &str, log: &mut SolverLog) {
         log.other_data.push(NamedValue::new("scip.tree", v));
     }
     if let Some(v) = parse_solution_attribution(text) {
-        log.other_data.push(NamedValue::new("scip.solution_attribution", v));
+        log.other_data
+            .push(NamedValue::new("scip.solution_attribution", v));
     }
-    if let Some(v) = parse_named_table(text, "Primal Heuristics", &["exec_time", "setup_time", "calls", "found", "best"]) {
+    if let Some(v) = parse_named_table(
+        text,
+        "Primal Heuristics",
+        &["exec_time", "setup_time", "calls", "found", "best"],
+    ) {
         log.other_data.push(NamedValue::new("scip.heuristics", v));
     }
     if let Some(v) = parse_named_table(
         text,
         "Separators",
-        &["exec_time", "setup_time", "calls", "root_calls", "cutoffs", "dom_reds", "found_cuts", "via_pool_add", "direct_add", "applied", "via_pool_app", "direct_app", "conss"],
+        &[
+            "exec_time",
+            "setup_time",
+            "calls",
+            "root_calls",
+            "cutoffs",
+            "dom_reds",
+            "found_cuts",
+            "via_pool_add",
+            "direct_add",
+            "applied",
+            "via_pool_app",
+            "direct_app",
+            "conss",
+        ],
     ) {
         log.other_data.push(NamedValue::new("scip.separators", v));
     }
     if let Some(v) = parse_named_table(
         text,
         "Branching Rules",
-        &["exec_time", "setup_time", "branch_lp", "branch_ext", "branch_ps", "cutoffs", "dom_reds", "cuts", "conss", "children"],
+        &[
+            "exec_time",
+            "setup_time",
+            "branch_lp",
+            "branch_ext",
+            "branch_ps",
+            "cutoffs",
+            "dom_reds",
+            "cuts",
+            "conss",
+            "children",
+        ],
     ) {
-        log.other_data.push(NamedValue::new("scip.branching_rules", v));
+        log.other_data
+            .push(NamedValue::new("scip.branching_rules", v));
     }
     if let Some(v) = parse_named_table(
         text,
         "LP",
-        &["time", "calls", "iterations", "iter_per_call", "iter_per_sec"],
+        &[
+            "time",
+            "calls",
+            "iterations",
+            "iter_per_call",
+            "iter_per_sec",
+        ],
     ) {
         log.other_data.push(NamedValue::new("scip.lp_breakdown", v));
     }
     if let Some(v) = parse_conflict_analysis(text) {
-        log.other_data.push(NamedValue::new("scip.conflict_analysis", v));
+        log.other_data
+            .push(NamedValue::new("scip.conflict_analysis", v));
     }
     if let Some(v) = parse_constraints_by_type(text) {
-        log.other_data.push(NamedValue::new("scip.constraints_by_type", v));
+        log.other_data
+            .push(NamedValue::new("scip.constraints_by_type", v));
     }
     if let Some(v) = parse_integrals(text) {
         log.other_data.push(NamedValue::new("scip.integrals", v));
@@ -563,7 +606,10 @@ fn parse_solution_attribution(text: &str) -> Option<serde_json::Value> {
                 inner.insert("nodes".into(), parse_json_scalar(&c[2]));
                 inner.insert("time_seconds".into(), parse_json_scalar(&c[3]));
                 inner.insert("depth".into(), parse_json_scalar(&c[4]));
-                inner.insert("heuristic".into(), serde_json::Value::String(c[5].to_string()));
+                inner.insert(
+                    "heuristic".into(),
+                    serde_json::Value::String(c[5].to_string()),
+                );
                 obj.insert(label.into(), serde_json::Value::Object(inner));
             }
         }
@@ -621,7 +667,14 @@ fn parse_conflict_analysis(text: &str) -> Option<serde_json::Value> {
     parse_named_table(
         text,
         "Conflict Analysis",
-        &["time", "calls", "success", "dom_reds", "conflicts", "literals"],
+        &[
+            "time",
+            "calls",
+            "success",
+            "dom_reds",
+            "conflicts",
+            "literals",
+        ],
     )
 }
 

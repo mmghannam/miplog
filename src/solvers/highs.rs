@@ -67,9 +67,7 @@ impl LogParser for HighsParser {
                 if log.bounds.dual.is_none() {
                     log.bounds.dual = v;
                 }
-                if log.bounds.gap.is_none()
-                    && log.termination.status == Status::Optimal
-                {
+                if log.bounds.gap.is_none() && log.termination.status == Status::Optimal {
                     log.bounds.gap = Some(0.0);
                 }
             }
@@ -152,16 +150,20 @@ impl LogParser for HighsParser {
 
 fn populate_other_data(text: &str, log: &mut SolverLog) {
     if let Some(v) = parse_coefficient_ranges(text) {
-        log.other_data.push(NamedValue::new("highs.coefficient_ranges", v));
+        log.other_data
+            .push(NamedValue::new("highs.coefficient_ranges", v));
     }
     if let Some(v) = parse_variable_types(text) {
-        log.other_data.push(NamedValue::new("highs.variable_types_after_presolve", v));
+        log.other_data
+            .push(NamedValue::new("highs.variable_types_after_presolve", v));
     }
     if let Some(v) = parse_solution_quality(text) {
-        log.other_data.push(NamedValue::new("highs.solution_quality", v));
+        log.other_data
+            .push(NamedValue::new("highs.solution_quality", v));
     }
     if let Some(v) = parse_lp_iter_breakdown(text) {
-        log.other_data.push(NamedValue::new("highs.lp_iteration_breakdown", v));
+        log.other_data
+            .push(NamedValue::new("highs.lp_iteration_breakdown", v));
     }
 }
 
@@ -274,7 +276,9 @@ fn parse_lp_iter_breakdown(text: &str) -> Option<serde_json::Value> {
 }
 
 fn parse_json_u64(s: &str) -> serde_json::Value {
-    s.parse::<u64>().map(serde_json::Value::from).unwrap_or(serde_json::Value::Null)
+    s.parse::<u64>()
+        .map(serde_json::Value::from)
+        .unwrap_or(serde_json::Value::Null)
 }
 
 fn parse_f64_or_str(s: &str) -> serde_json::Value {

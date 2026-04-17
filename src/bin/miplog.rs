@@ -132,7 +132,9 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         (Some(path), OutputFormat::Text) => std::fs::write(&path, format!("{log:#}\n"))?,
         (Some(path), OutputFormat::Summary) => std::fs::write(&path, summary_str())?,
         (None, OutputFormat::JsonGz) => {
-            return Err("--format json-gz requires --output (gzip to stdout is rarely useful)".into());
+            return Err(
+                "--format json-gz requires --output (gzip to stdout is rarely useful)".into(),
+            );
         }
         (None, OutputFormat::Json) => {
             serde_json::to_writer(io::stdout().lock(), &log)?;

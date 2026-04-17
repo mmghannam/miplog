@@ -129,16 +129,19 @@ impl LogParser for CbcParser {
 
 fn populate_other_data(text: &str, log: &mut SolverLog) {
     if let Some(v) = parse_cut_details(text) {
-        log.other_data.push(NamedValue::new("cbc.cut_generators", v));
+        log.other_data
+            .push(NamedValue::new("cbc.cut_generators", v));
     }
     if let Some(v) = parse_strong_branching(text) {
-        log.other_data.push(NamedValue::new("cbc.strong_branching", v));
+        log.other_data
+            .push(NamedValue::new("cbc.strong_branching", v));
     }
     if let Some(v) = parse_root_lp(text) {
         log.other_data.push(NamedValue::new("cbc.root_lp", v));
     }
     if let Some(v) = parse_continuous_obj(text) {
-        log.other_data.push(NamedValue::new("cbc.continuous_objective", v));
+        log.other_data
+            .push(NamedValue::new("cbc.continuous_objective", v));
     }
 }
 
@@ -194,11 +197,9 @@ fn parse_root_lp(text: &str) -> Option<serde_json::Value> {
 
 /// "Continuous objective value is 6875 - 0.00 seconds"
 fn parse_continuous_obj(text: &str) -> Option<serde_json::Value> {
-    let c = Regex::new(
-        r"Continuous objective value is\s+([-\d.eE+]+)\s+-\s+([\d.]+)\s+seconds",
-    )
-    .unwrap()
-    .captures(text)?;
+    let c = Regex::new(r"Continuous objective value is\s+([-\d.eE+]+)\s+-\s+([\d.]+)\s+seconds")
+        .unwrap()
+        .captures(text)?;
     let mut o = serde_json::Map::new();
     o.insert("value".into(), parse_f64_json_cbc(&c[1]));
     o.insert("time_seconds".into(), parse_f64_json_cbc(&c[2]));
@@ -356,7 +357,9 @@ fn re_obj_value() -> &'static Regex {
 fn re_lp_obj() -> &'static Regex {
     // CBC LP-only termination: "Optimal - objective value X" / "Optimal objective X"
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| Regex::new(r"Optimal(?:\s+-\s+| )objective(?:\s+value)?\s+([-\d.eE+]+)").unwrap())
+    R.get_or_init(|| {
+        Regex::new(r"Optimal(?:\s+-\s+| )objective(?:\s+value)?\s+([-\d.eE+]+)").unwrap()
+    })
 }
 
 fn re_lower_bound() -> &'static Regex {

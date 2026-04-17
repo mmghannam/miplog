@@ -51,11 +51,7 @@ impl SolverLog {
 }
 
 /// Short, human-readable glance at a [`SolverLog`]. Emitted by `{}` Display.
-fn fmt_summary(
-    log: &SolverLog,
-    f: &mut fmt::Formatter<'_>,
-    include_table: bool,
-) -> fmt::Result {
+fn fmt_summary(log: &SolverLog, f: &mut fmt::Formatter<'_>, include_table: bool) -> fmt::Result {
     // Line 1: solver identity + problem + status + wall
     write!(f, "solver: {}", log.solver.key())?;
     if let Some(v) = &log.version {
@@ -186,7 +182,11 @@ fn gap_sparkline(t: &ProgressTable) -> Option<String> {
     let t_min = pts.first()?.0;
     let t_max = pts.last()?.0;
     let time_spread = (t_max - t_min).abs() > 1e-6;
-    let max_gap = pts.iter().map(|(_, g)| *g).fold(f64::NEG_INFINITY, f64::max).max(1e-9);
+    let max_gap = pts
+        .iter()
+        .map(|(_, g)| *g)
+        .fold(f64::NEG_INFINITY, f64::max)
+        .max(1e-9);
     let mut sparks = String::with_capacity(W * 3);
     for i in 0..W {
         let (_, g) = if time_spread {
@@ -262,7 +262,9 @@ fn write_summary_table(f: &mut fmt::Formatter<'_>, t: &ProgressTable) -> fmt::Re
             fmt_opt_u(t.nodes_explored[i]),
             fmt_sci(t.primal[i]),
             fmt_sci(t.dual[i]),
-            t.gap[i].map(|g| format!("{:.1}%", g * 100.0)).unwrap_or_else(|| "-".into()),
+            t.gap[i]
+                .map(|g| format!("{:.1}%", g * 100.0))
+                .unwrap_or_else(|| "-".into()),
             match &t.event[i] {
                 Some(NodeEvent::Heuristic) => "H",
                 Some(NodeEvent::BranchSolution) => "*",
@@ -325,7 +327,10 @@ fn trim_f(v: f64) -> String {
     if v.fract() == 0.0 && v.abs() < 1e16 {
         format!("{:.0}", v)
     } else {
-        format!("{v:.6}").trim_end_matches('0').trim_end_matches('.').to_string()
+        format!("{v:.6}")
+            .trim_end_matches('0')
+            .trim_end_matches('.')
+            .to_string()
     }
 }
 
@@ -396,10 +401,7 @@ fn fmt_text_v1(log: &SolverLog, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_opt_f(log.progress.last_time()),
     )?;
     if !log.progress.is_empty() {
-        writeln!(
-            f,
-            "  # cols: time nodes primal dual gap depth lp event"
-        )?;
+        writeln!(f, "  # cols: time nodes primal dual gap depth lp event")?;
         for row in log.progress.iter() {
             writeln!(
                 f,

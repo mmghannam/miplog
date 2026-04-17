@@ -41,10 +41,10 @@ impl LogParser for XpressParser {
             log.termination.status = Status::Infeasible;
         } else if text.contains("*** Search completed ***") {
             log.termination.status = Status::Optimal;
-        } else if !text.contains("MILP") && !text.contains("Final MIP")
+        } else if !text.contains("MILP")
+            && !text.contains("Final MIP")
             && !text.contains("Starting root cutting")
-            && (text.contains("Dual solved problem")
-                || text.contains("Optimal solution found"))
+            && (text.contains("Dual solved problem") || text.contains("Optimal solution found"))
         {
             // LP-only run (no B&B). Xpress always solves an LP relaxation
             // first even on MIPs, so we restrict this branch to logs that
@@ -174,7 +174,8 @@ impl LogParser for XpressParser {
 
 fn populate_other_data(text: &str, log: &mut SolverLog) {
     if let Some(v) = parse_coefficient_ranges(text) {
-        log.other_data.push(NamedValue::new("xpress.coefficient_ranges", v));
+        log.other_data
+            .push(NamedValue::new("xpress.coefficient_ranges", v));
     }
     if let Some(v) = parse_symmetry(text) {
         log.other_data.push(NamedValue::new("xpress.symmetry", v));
@@ -183,16 +184,19 @@ fn populate_other_data(text: &str, log: &mut SolverLog) {
         log.other_data.push(NamedValue::new("xpress.run_config", v));
     }
     if let Some(v) = parse_heuristic_solutions(text) {
-        log.other_data.push(NamedValue::new("xpress.pre_bb_heuristic_solutions", v));
+        log.other_data
+            .push(NamedValue::new("xpress.pre_bb_heuristic_solutions", v));
     }
     if let Some(v) = parse_work_units(text) {
         log.other_data.push(NamedValue::new("xpress.work", v));
     }
     if let Some(v) = parse_stopping_reason(text) {
-        log.other_data.push(NamedValue::new("xpress.stopping_reason", v));
+        log.other_data
+            .push(NamedValue::new("xpress.stopping_reason", v));
     }
     if let Some(v) = parse_lp_violations(text) {
-        log.other_data.push(NamedValue::new("xpress.solution_quality", v));
+        log.other_data
+            .push(NamedValue::new("xpress.solution_quality", v));
     }
 }
 
@@ -259,14 +263,14 @@ fn parse_symmetry(text: &str) -> Option<serde_json::Value> {
 
 /// "Minimizing MILP p0201 using up to 14 threads and up to 24GB memory"
 fn parse_threads_and_memory(text: &str) -> Option<serde_json::Value> {
-    let re = Regex::new(
-        r"using up to (\d+) threads? and up to (\d+)(GB|MB|KB) memory",
-    )
-    .unwrap();
+    let re = Regex::new(r"using up to (\d+) threads? and up to (\d+)(GB|MB|KB) memory").unwrap();
     let c = re.captures(text)?;
     let mut obj = serde_json::Map::new();
     obj.insert("threads".into(), parse_f64_json(&c[1]));
-    obj.insert("memory_limit".into(), serde_json::Value::String(format!("{}{}", &c[2], &c[3])));
+    obj.insert(
+        "memory_limit".into(),
+        serde_json::Value::String(format!("{}{}", &c[2], &c[3])),
+    );
     Some(serde_json::Value::Object(obj))
 }
 
@@ -281,7 +285,10 @@ fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
         let mut o = serde_json::Map::new();
         o.insert("value".into(), parse_f64_json(&c[1]));
         o.insert("time".into(), parse_f64_json(&c[2]));
-        o.insert("heuristic".into(), serde_json::Value::String(c[3].to_string()));
+        o.insert(
+            "heuristic".into(),
+            serde_json::Value::String(c[3].to_string()),
+        );
         arr.push(serde_json::Value::Object(o));
     }
     (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
@@ -289,10 +296,7 @@ fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
 
 /// "Work / work units per second : 0.32 / 2.45"
 fn parse_work_units(text: &str) -> Option<serde_json::Value> {
-    let re = Regex::new(
-        r"Work\s*/\s*work units per second\s*:\s*([\d.]+)\s*/\s*([\d.]+)",
-    )
-    .unwrap();
+    let re = Regex::new(r"Work\s*/\s*work units per second\s*:\s*([\d.]+)\s*/\s*([\d.]+)").unwrap();
     let c = re.captures(text)?;
     let mut obj = serde_json::Map::new();
     obj.insert("work".into(), parse_f64_json(&c[1]));
@@ -312,9 +316,15 @@ fn parse_stopping_reason(text: &str) -> Option<serde_json::Value> {
     let re = Regex::new(r"STOPPING - ([^(\n]+)(?:\(([^)]+)\))?\.?").unwrap();
     let c = re.captures(text)?;
     let mut obj = serde_json::Map::new();
-    obj.insert("reason".into(), serde_json::Value::String(c[1].trim().to_string()));
+    obj.insert(
+        "reason".into(),
+        serde_json::Value::String(c[1].trim().to_string()),
+    );
     if let Some(extra) = c.get(2) {
-        obj.insert("detail".into(), serde_json::Value::String(extra.as_str().to_string()));
+        obj.insert(
+            "detail".into(),
+            serde_json::Value::String(extra.as_str().to_string()),
+        );
     }
     Some(serde_json::Value::Object(obj))
 }
@@ -323,10 +333,22 @@ fn parse_stopping_reason(text: &str) -> Option<serde_json::Value> {
 fn parse_lp_violations(text: &str) -> Option<serde_json::Value> {
     let mut obj = serde_json::Map::new();
     for (k, re_src) in [
-        ("max_primal_violation", r"Max primal violation\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)"),
-        ("max_dual_violation", r"Max dual violation\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)"),
-        ("max_integer_violation", r"Max integer violation\s+\(abs\s*\)\s*:\s+([\d.eE+\-]+)"),
-        ("max_complementarity_violation", r"Max complementarity viol\.\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)"),
+        (
+            "max_primal_violation",
+            r"Max primal violation\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)",
+        ),
+        (
+            "max_dual_violation",
+            r"Max dual violation\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)",
+        ),
+        (
+            "max_integer_violation",
+            r"Max integer violation\s+\(abs\s*\)\s*:\s+([\d.eE+\-]+)",
+        ),
+        (
+            "max_complementarity_violation",
+            r"Max complementarity viol\.\s+\(abs/rel\)\s*:\s+([\d.eE+\-]+)",
+        ),
     ] {
         if let Some(c) = Regex::new(re_src).unwrap().captures(text) {
             obj.insert(k.into(), parse_f64_json(&c[1]));
@@ -517,17 +539,13 @@ fn re_root_final_obj() -> &'static Regex {
 fn re_pd_integral() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
-        Regex::new(r"Solution time\s*/\s*primaldual integral\s*:\s*[\d.]+s/\s*([\d.]+)%")
-            .unwrap()
+        Regex::new(r"Solution time\s*/\s*primaldual integral\s*:\s*[\d.]+s/\s*([\d.]+)%").unwrap()
     })
 }
 fn re_first_solution_found() -> &'static Regex {
     static R: OnceLock<Regex> = OnceLock::new();
     R.get_or_init(|| {
-        Regex::new(
-            r"\*\*\* Solution found:\s+([\d.eE+\-]+)\s+Time:\s+([\d.]+)",
-        )
-        .unwrap()
+        Regex::new(r"\*\*\* Solution found:\s+([\d.eE+\-]+)\s+Time:\s+([\d.]+)").unwrap()
     })
 }
 fn re_cuts_total() -> &'static Regex {
@@ -561,9 +579,7 @@ fn re_final_obj() -> &'static Regex {
 fn re_lp_simplex_summary() -> &'static Regex {
     // "  85 simplex iterations in 0.00 seconds at time 0"
     static R: OnceLock<Regex> = OnceLock::new();
-    R.get_or_init(|| {
-        Regex::new(r"(\d+) simplex iterations? in ([\d.]+) seconds").unwrap()
-    })
+    R.get_or_init(|| Regex::new(r"(\d+) simplex iterations? in ([\d.]+) seconds").unwrap())
 }
 fn re_lp_final_obj() -> &'static Regex {
     // LP-only termination: matches "Final objective : X" but only when

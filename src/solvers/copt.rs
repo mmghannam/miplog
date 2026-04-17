@@ -137,26 +137,42 @@ fn populate_other_data(text: &str, log: &mut SolverLog) {
     }
     let (before, after) = parse_variable_types(text);
     if let Some(v) = before {
-        log.other_data.push(NamedValue::new("copt.variable_types_before_presolve", v));
+        log.other_data
+            .push(NamedValue::new("copt.variable_types_before_presolve", v));
     }
     if let Some(v) = after {
-        log.other_data.push(NamedValue::new("copt.variable_types_after_presolve", v));
+        log.other_data
+            .push(NamedValue::new("copt.variable_types_after_presolve", v));
     }
     if let Some(v) = parse_coefficient_ranges(text) {
-        log.other_data.push(NamedValue::new("copt.coefficient_ranges", v));
+        log.other_data
+            .push(NamedValue::new("copt.coefficient_ranges", v));
     }
     if let Some(v) = parse_violations(text) {
-        log.other_data.push(NamedValue::new("copt.solution_quality", v));
+        log.other_data
+            .push(NamedValue::new("copt.solution_quality", v));
     }
 }
 
 fn parse_machine(text: &str) -> Option<serde_json::Value> {
     let mut obj = serde_json::Map::new();
-    if let Some(c) = Regex::new(r"Cardinal Optimizer\s+\S+\s+on\s+(.+)").unwrap().captures(text) {
-        obj.insert("platform".into(), serde_json::Value::String(c[1].trim().to_string()));
+    if let Some(c) = Regex::new(r"Cardinal Optimizer\s+\S+\s+on\s+(.+)")
+        .unwrap()
+        .captures(text)
+    {
+        obj.insert(
+            "platform".into(),
+            serde_json::Value::String(c[1].trim().to_string()),
+        );
     }
-    if let Some(c) = Regex::new(r"The CPU model is\s+(.+)").unwrap().captures(text) {
-        obj.insert("cpu".into(), serde_json::Value::String(c[1].trim().to_string()));
+    if let Some(c) = Regex::new(r"The CPU model is\s+(.+)")
+        .unwrap()
+        .captures(text)
+    {
+        obj.insert(
+            "cpu".into(),
+            serde_json::Value::String(c[1].trim().to_string()),
+        );
     }
     if let Some(c) = Regex::new(
         r"Hardware has\s+(\d+)\s+physical cores?\s+and\s+(\d+)\s+logical cores?\.\s*Using instruction set\s+(\S+)",
@@ -196,8 +212,9 @@ fn parse_variable_types(text: &str) -> (Option<serde_json::Value>, Option<serde_
     let orig_hdr = Regex::new(r"(?m)^The original problem has:").unwrap();
     if let Some(m) = orig_hdr.find(text) {
         for line in text[m.end()..].lines().take(6) {
-            if let Some(c) =
-                Regex::new(r"^\s+(\d+)\s+(binaries|integers|continuous)").unwrap().captures(line)
+            if let Some(c) = Regex::new(r"^\s+(\d+)\s+(binaries|integers|continuous)")
+                .unwrap()
+                .captures(line)
             {
                 let mut obj = serde_json::Map::new();
                 obj.insert(c[2].to_string(), parse_f64_json(&c[1]));
@@ -228,10 +245,8 @@ fn parse_variable_types(text: &str) -> (Option<serde_json::Value>, Option<serde_
 
 /// "Range of matrix coefficients: [1e+00,2e+01]" + three similar lines.
 fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
-    let re = Regex::new(
-        r"Range of (matrix|rhs|bound|cost) coefficients:\s*\[([^,]+),([^\]]+)\]",
-    )
-    .unwrap();
+    let re = Regex::new(r"Range of (matrix|rhs|bound|cost) coefficients:\s*\[([^,]+),([^\]]+)\]")
+        .unwrap();
     let mut obj = serde_json::Map::new();
     for c in re.captures_iter(text) {
         let name = c[1].to_string();
@@ -246,10 +261,8 @@ fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
 fn parse_violations(text: &str) -> Option<serde_json::Value> {
     let hdr = Regex::new(r"(?m)^Violations\s*:").unwrap();
     let m = hdr.find(text)?;
-    let row = Regex::new(
-        r"^\s+(bounds|rows|integrality)\s*:\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)?",
-    )
-    .unwrap();
+    let row =
+        Regex::new(r"^\s+(bounds|rows|integrality)\s*:\s+([\d.eE+\-]+)\s+([\d.eE+\-]+)?").unwrap();
     let mut obj = serde_json::Map::new();
     for line in text[m.end()..].lines().skip(1).take(4) {
         if line.trim().is_empty() {

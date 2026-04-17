@@ -2,7 +2,7 @@
 //!
 //! Fields are `Option<_>` because no single solver emits everything; parsers
 //! fill in what they observe and leave the rest `None`. Solver-specific data
-//! that doesn't fit the common vocabulary goes under [`SolverLog::extras`].
+//! that doesn't fit the common vocabulary goes under [`SolverLog::other_data`].
 //!
 //! # Two tiers of fields
 //!
@@ -144,7 +144,7 @@ impl NamedValue {
 }
 
 /// Columnar store for B&B progress rows. Maintains an invariant: every
-/// column vector has the same length. Rows are appended via [`push`].
+/// column vector has the same length. Rows are appended via [`ProgressTable::push`].
 ///
 /// Column storage gives us:
 /// * order-of-magnitude smaller size after gzip than row-oriented JSON
