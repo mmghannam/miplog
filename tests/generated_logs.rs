@@ -7,7 +7,7 @@
 //! Each log is from solving p0201 (MIPLIB), a 201-variable binary program
 //! with known optimal objective = 7615.
 
-use orlog::{autodetect, Solver, Status};
+use miplog::{autodetect, Solver, Status};
 use std::path::Path;
 
 const LOGS_DIR: &str = "tests/fixtures/logs";
@@ -16,7 +16,7 @@ const OBJ_TOL: f64 = 1.0; // integer problem, allow rounding
 
 /// Try to load and parse a log.  Returns None if the file doesn't exist
 /// (solver wasn't available when logs were generated).
-fn try_parse(solver_name: &str) -> Option<orlog::SolverLog> {
+fn try_parse(solver_name: &str) -> Option<miplog::SolverLog> {
     let path = Path::new(LOGS_DIR).join(format!("{solver_name}.log"));
     if !path.exists() {
         eprintln!("skip {solver_name}: {path:?} not found (run generate_logs.py)");
@@ -28,7 +28,7 @@ fn try_parse(solver_name: &str) -> Option<orlog::SolverLog> {
 }
 
 /// Common assertions that must hold for every solver on p0201.
-fn assert_p0201(log: &orlog::SolverLog, expected_solver: Solver) {
+fn assert_p0201(log: &miplog::SolverLog, expected_solver: Solver) {
     let name = expected_solver.key();
 
     // Solver detection
@@ -334,7 +334,7 @@ fn concat_fixtures_split_and_parse() {
         }
         total += 1;
         let text = std::fs::read_to_string(&path).unwrap();
-        let entries = orlog::input::split_concatenated(&text);
+        let entries = miplog::input::split_concatenated(&text);
         assert_eq!(
             entries.len(),
             3,
@@ -454,7 +454,7 @@ fn at_least_one_solver_log_exists() {
 }
 
 /// Round-trip every generated log through Display -> from_text.  Validates that
-/// the documented `orlog-text` v1 format is idempotent for real parser output.
+/// the documented `miplog-text` v1 format is idempotent for real parser output.
 #[test]
 fn text_format_roundtrip_all_generated() {
     let dir = Path::new(LOGS_DIR);
@@ -472,7 +472,7 @@ fn text_format_roundtrip_all_generated() {
             };
             let rendered = format!("{log:#}");
             // Parse back.
-            let back = orlog::from_text(&rendered)
+            let back = miplog::from_text(&rendered)
                 .unwrap_or_else(|e| panic!("from_text({:?}): {e}", path.file_name()));
             // Idempotent: re-rendering should match byte-for-byte.
             let rendered2 = format!("{back:#}");
@@ -496,7 +496,7 @@ fn generated_roundtrip() {
     if !dir.exists() {
         return;
     }
-    let tmp = std::env::temp_dir().join("orlog-generated-rt");
+    let tmp = std::env::temp_dir().join("miplog-generated-rt");
     std::fs::create_dir_all(&tmp).unwrap();
 
     for entry in std::fs::read_dir(dir).unwrap().flatten() {
@@ -508,9 +508,9 @@ fn generated_roundtrip() {
                 Err(_) => continue,
             };
             let stem = path.file_stem().unwrap().to_string_lossy();
-            let gz = tmp.join(format!("{stem}.olog"));
-            orlog::output::write_json_gz(&gz, &log).unwrap();
-            let back = orlog::output::read_json(&gz).unwrap();
+            let gz = tmp.join(format!("{stem}.mlog"));
+            miplog::output::write_json_gz(&gz, &log).unwrap();
+            let back = miplog::output::read_json(&gz).unwrap();
             assert_eq!(back.solver, log.solver, "{stem}: solver mismatch");
             assert_eq!(
                 back.termination.status, log.termination.status,

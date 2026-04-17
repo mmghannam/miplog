@@ -43,7 +43,7 @@ Three runs of the same solver on different instances, stitched with
 `@01 modified/<instance>.mps.gz ===========` start markers and
 `@05 7200` end markers (the format the [Mittelmann benchmarks][m] use to
 package 240 instance solves into one file per solver). Exercises
-`orlog::input::split_concatenated`, which yields a `Vec<ConcatEntry>`
+`miplog::input::split_concatenated`, which yields a `Vec<ConcatEntry>`
 each parser then handles independently.
 
 The three runs are: p0201 (Optimal), glass4 with time limit (TimeLimit),
@@ -112,7 +112,7 @@ Committing them:
 
 - Makes `cargo test` runnable without the solver install dance.
 - Makes parser regressions visible in diffs (a log that got parsed differently
-  after a refactor stands out because the rendered `orlog-text` will change).
+  after a refactor stands out because the rendered `miplog-text` will change).
 - Pins the exact solver versions exercised by the test suite; regenerating
   replaces these with whatever versions happen to be installed.
 

@@ -1,13 +1,13 @@
-# orlog
+# miplog
 
 Parse MIP/LP solver log files into a unified, serde-serializable schema.
 
 When you benchmark optimization solvers, every solver emits its results in a
 different format — different column names for the same concepts, different
-phrases for the same termination status, different units. `orlog` reads those
+phrases for the same termination status, different units. `miplog` reads those
 logs and gives you back one consistent Rust structure.
 
-The unified on-disk form is called **`.olog`** (gzipped JSON of a `SolverLog`).
+The unified on-disk form is called **`.mlog`** (gzipped JSON of a `SolverLog`).
 
 ## Status
 
@@ -18,28 +18,28 @@ Very early. Parsers: **SCIP 10–11**, **Gurobi 11–13**, **Xpress 9**,
 ## Quickstart (CLI)
 
 ```bash
-cargo install orlog
+cargo install miplog
 
-orlog run.log                       # print orlog-text v1 to stdout
-orlog run.log --format json | jq    # pipe JSON into other tools
-orlog run.log -o run.olog           # archive as gzipped JSON (extension-inferred)
-orlog run.log --no-progress         # skip the B&B progress table
-cat run.log | orlog -               # stdin works
+miplog run.log                       # print miplog-text v1 to stdout
+miplog run.log --format json | jq    # pipe JSON into other tools
+miplog run.log -o run.mlog           # archive as gzipped JSON (extension-inferred)
+miplog run.log --no-progress         # skip the B&B progress table
+cat run.log | miplog -               # stdin works
 ```
 
-Output format is inferred from `-o`'s extension: `.olog` / `.json.gz` → gzipped
-JSON, `.json` → JSON, anything else → orlog-text.
+Output format is inferred from `-o`'s extension: `.mlog` / `.json.gz` → gzipped
+JSON, `.json` → JSON, anything else → miplog-text.
 
 ## Quickstart (library)
 
 ```rust
-use orlog::{autodetect, input, output};
+use miplog::{autodetect, input, output};
 
 let text = input::read_file("run.log.gz")?;   // plain or gzipped, auto-detect
 let log = autodetect(&text)?;                 // Solver picked from content
 
 println!("{log}");                            // unified human summary
-output::write_json_gz("run.olog", &log)?;     // archival storage
+output::write_json_gz("run.mlog", &log)?;     // archival storage
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
@@ -54,7 +54,7 @@ scip 10.0.0
   bounds     : primal=302.00 dual=302.00 gap=0.00%
   presolve   : rows 576 → 487  cols 18380 → 4579  nnz - → -
   tree       : nodes=- simplex_iters=- sols=4
-  parsed by  : orlog 0.1.0 (abc123def456)
+  parsed by  : miplog 0.1.0 (abc123def456)
 ```
 
 If the solver emitted a B&B progress table, it's rendered below as a compact,
@@ -94,7 +94,7 @@ The core type is `SolverLog`:
 - `extras: Option<serde_json::Value>` — escape hatch for anything
   solver-specific that doesn't fit the common vocabulary
 - `parser: ParserInfo { version, git_hash }` — captures which build of
-  `orlog` produced the parse, so persisted `.olog` files stay reproducible
+  `miplog` produced the parse, so persisted `.mlog` files stay reproducible
   across parser changes
 
 Every field except `solver` and `parser` is `Option<_>` or otherwise skippable.
@@ -113,7 +113,7 @@ No solver emits everything; parsers fill what they see.
 Row-oriented access is available via `log.progress.iter() -> NodeSnapshot`:
 
 ```rust
-# let log = orlog::SolverLog::new(orlog::Solver::Gurobi);
+# let log = miplog::SolverLog::new(miplog::Solver::Gurobi);
 for row in log.progress.iter() {
     println!("{:>6.1}s  primal={:?}  dual={:?}", row.time_seconds, row.primal, row.dual);
 }
@@ -132,17 +132,17 @@ to `NodeEvent::Heuristic` / `BranchSolution`; unknown markers end up as
   that you feed to `autodetect`.
 - **Roadmap**: folder walking, zip archives, tar.gz streams.
 
-## Output / storage — the `.olog` format
+## Output / storage — the `.mlog` format
 
-`.olog` is gzipped JSON of a `SolverLog`. That's it — we deliberately kept it
+`.mlog` is gzipped JSON of a `SolverLog`. That's it — we deliberately kept it
 as serde-friendly JSON rather than a binary format so it's human-inspectable
-(`zcat run.olog | jq`) while still compressing well via the columnar progress
+(`zcat run.mlog | jq`) while still compressing well via the columnar progress
 layout.
 
 - `output::write_json(path, log)` — compact single-line JSON
 - `output::write_json_pretty(path, log)` — indented
-- `output::write_json_gz(path, log)` — gzip-compressed `.olog` (recommended)
-- `output::read_json(path)` — auto-detects `.gz` / `.olog`
+- `output::write_json_gz(path, log)` — gzip-compressed `.mlog` (recommended)
+- `output::read_json(path)` — auto-detects `.gz` / `.mlog`
 
 Binary formats (`postcard`, `bincode`, `ciborium`) aren't pulled in by default;
 because everything is `serde`-derived they're a one-line addition behind a

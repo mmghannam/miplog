@@ -1,6 +1,6 @@
 /target
 
-# Cargo.lock IS committed: orlog ships a binary (`orlog` CLI), so locking
+# Cargo.lock IS committed: miplog ships a binary (`miplog` CLI), so locking
 # exact dependency versions gives reproducible builds for end users.
 
 # Local sample logs used for integration tests. License status of third-party

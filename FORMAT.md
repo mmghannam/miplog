@@ -1,15 +1,15 @@
-# `orlog-text` format v1
+# `miplog-text` format v1
 
 A line-oriented, ASCII-only text representation of a `SolverLog`. Designed to
 be human-readable **and** trivially parseable with ~30 lines of code in any
-language. The Rust `Display` impl emits this format; `orlog::text::from_text`
+language. The Rust `Display` impl emits this format; `miplog::text::from_text`
 reads it back. A round-trip test (`display_roundtrips`) keeps the two honest.
 
 ## Grammar
 
 ```
 <document>  ::= <magic> <newline> <field>* <progress>? <footer>?
-<magic>     ::= "orlog-text 1"
+<magic>     ::= "miplog-text 1"
 <field>     ::= <tag> ":" " " <payload> <newline>
 <tag>       ::= [a-z][a-z_]*
 <payload>   ::= <tokens> | <freeform>
@@ -45,7 +45,7 @@ reads it back. A round-trip test (`display_roundtrips`) keeps the two honest.
 | `parser`   | `version=<str> git=<hash\|->`                                | yes      |
 
 > **`other_data`** (`Vec<NamedValue>` in the Rust schema) is intentionally
-> **not** serialized by the text format. Use JSON (`.olog`) for full fidelity;
+> **not** serialized by the text format. Use JSON (`.mlog`) for full fidelity;
 > the text format is a human summary + machine-parseable contract for the
 > Core + Extended tiers only.
 
@@ -72,14 +72,14 @@ time nodes primal dual gap depth lp event
 - `event`: one of `-` (no event), `heuristic`, `branch_solution`, `cutoff`,
   or a quoted raw marker for `NodeEvent::Other` (e.g. `"b"`).
 
-The document always starts with the magic line `orlog-text 1` and ends
+The document always starts with the magic line `miplog-text 1` and ends
 (newline-terminated) at the `parser:` line. Parsers must tolerate trailing
 whitespace and blank lines at document end.
 
 ## Example
 
 ```
-orlog-text 1
+miplog-text 1
 solver: name=scip version=10.0.0 git=-
 problem: p_30n20b8
 status: optimal reason="optimal solution found"
@@ -98,6 +98,6 @@ parser: version=0.1.0 git=-
 
 ## Stability guarantee
 
-The format is versioned via the magic line. `orlog-text 1` is stable across
+The format is versioned via the magic line. `miplog-text 1` is stable across
 patch and minor releases of the crate. Breaking changes bump the version
 number and the old parser variant stays alive for at least one major release.

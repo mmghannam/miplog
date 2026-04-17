@@ -1,11 +1,11 @@
 [package]
-name = "orlog"
+name = "miplog"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT OR Apache-2.0"
 description = "Parse MIP/LP solver log files (Gurobi, Xpress, SCIP, HiGHS, COPT, …) into a unified, serde-serializable schema."
-repository = "https://github.com/mghannam/orlog"
+repository = "https://github.com/mmghannam/miplog"
 readme = "README.md"
 keywords = ["mip", "optimization", "solver", "parser", "log"]
 categories = ["parser-implementations", "science"]
@@ -23,8 +23,8 @@ nom = "7"
 clap = { version = "4", features = ["derive"] }
 
 [[bin]]
-name = "orlog"
-path = "src/bin/orlog.rs"
+name = "miplog"
+path = "src/bin/miplog.rs"
 
 [dev-dependencies]
 insta = { version = "1", features = ["json"] }

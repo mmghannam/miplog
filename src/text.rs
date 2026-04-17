@@ -3,7 +3,7 @@
 //! * **Summary** — the default `Display` output. A 2–4 line, human-readable
 //!   glance with only the universal vocabulary (solver/status/time/bounds/
 //!   presolve). Not round-trippable.
-//! * **`orlog-text` v1** — the alternate `Display` output (via `{:#}`) and
+//! * **`miplog-text` v1** — the alternate `Display` output (via `{:#}`) and
 //!   what [`from_text`] parses. Full fidelity, ASCII-only, round-trippable.
 //!   Grammar and stability documented in `FORMAT.md`.
 //!
@@ -14,7 +14,7 @@ use crate::schema::*;
 use std::collections::BTreeMap;
 use std::fmt;
 
-pub const MAGIC: &str = "orlog-text 1";
+pub const MAGIC: &str = "miplog-text 1";
 
 /* ----------------------------- serialization ----------------------------- */
 
@@ -32,7 +32,7 @@ impl fmt::Display for SolverLog {
 /// a derived insight, not the raw table).
 ///
 /// ```
-/// let log = orlog::SolverLog::new(orlog::Solver::Gurobi);
+/// let log = miplog::SolverLog::new(miplog::Solver::Gurobi);
 /// println!("{}", log.summary_no_table());
 /// ```
 pub struct SummaryNoTable<'a>(pub &'a SolverLog);
@@ -329,7 +329,7 @@ fn trim_f(v: f64) -> String {
     }
 }
 
-/// Emit `orlog-text` v1, the round-trippable full form. `{:#}` on Display.
+/// Emit `miplog-text` v1, the round-trippable full form. `{:#}` on Display.
 fn fmt_text_v1(log: &SolverLog, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     writeln!(f, "{MAGIC}")?;
     writeln!(
@@ -514,7 +514,7 @@ pub enum TextError {
     Parse { line: usize, msg: String },
 }
 
-/// Parse the `orlog-text` v1 form back into a [`SolverLog`].
+/// Parse the `miplog-text` v1 form back into a [`SolverLog`].
 pub fn from_text(input: &str) -> Result<SolverLog, TextError> {
     let mut lines = input.lines().enumerate();
 
@@ -528,9 +528,9 @@ pub fn from_text(input: &str) -> Result<SolverLog, TextError> {
         break l;
     };
     if magic != MAGIC {
-        if magic.starts_with("orlog-text ") {
+        if magic.starts_with("miplog-text ") {
             return Err(TextError::WrongVersion(
-                magic.strip_prefix("orlog-text ").unwrap().into(),
+                magic.strip_prefix("miplog-text ").unwrap().into(),
             ));
         }
         return Err(TextError::MissingMagic);
@@ -1042,7 +1042,7 @@ mod tests {
             Err(TextError::MissingMagic)
         ));
         assert!(matches!(
-            from_text("orlog-text 99\n"),
+            from_text("miplog-text 99\n"),
             Err(TextError::WrongVersion(_))
         ));
     }

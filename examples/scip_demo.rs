@@ -3,7 +3,7 @@
 //!
 //! Run with:  SOLVERLOG_CONCAT_SCIP=/path/to/modified.scip.12threads.7200s.out.gz cargo run --example scip_demo
 
-use orlog::{autodetect, input};
+use miplog::{autodetect, input};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path = std::env::var("SOLVERLOG_CONCAT_SCIP")?;

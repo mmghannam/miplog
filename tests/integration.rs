@@ -2,7 +2,7 @@
 //! Point `SOLVERLOG_SAMPLES` at a dir containing solver/inst.log(.gz) files
 //! and this picks a few known-outcomes to smoke-test the parsers.
 
-use orlog::{autodetect, input, output, Solver, Status};
+use miplog::{autodetect, input, output, Solver, Status};
 use std::path::{Path, PathBuf};
 
 fn samples_dir() -> Option<PathBuf> {
@@ -225,7 +225,7 @@ fn roundtrip_and_size_comparison() {
 }
 
 /// Round-trip every SOLVERLOG_SAMPLES log through Display → from_text → Display.
-/// Enforces that the documented orlog-text v1 format is idempotent across all
+/// Enforces that the documented miplog-text v1 format is idempotent across all
 /// real-world parser outputs.
 #[test]
 fn text_format_roundtrip_all_samples() {
@@ -249,7 +249,7 @@ fn text_format_roundtrip_all_samples() {
             let Ok(log) = autodetect(&text) else { continue };
             total += 1;
             let rendered = format!("{log:#}");
-            match orlog::from_text(&rendered) {
+            match miplog::from_text(&rendered) {
                 Ok(back) => {
                     let rendered2 = format!("{back:#}");
                     if rendered != rendered2 {

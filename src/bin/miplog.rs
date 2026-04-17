@@ -1,19 +1,19 @@
-//! `orlog` — command-line front-end for the [`orlog`] crate.
+//! `miplog` — command-line front-end for the [`miplog`] crate.
 //!
 //! Reads a solver log, emits the parsed result in one of three formats.
-//! Output format is inferred from `--output`'s extension (`.olog`/`.json.gz`
-//! = gzipped JSON, `.json` = JSON, anything else or stdout = orlog-text).
+//! Output format is inferred from `--output`'s extension (`.mlog`/`.json.gz`
+//! = gzipped JSON, `.json` = JSON, anything else or stdout = miplog-text).
 //! Override with `--format`.
 
 use clap::{Parser, ValueEnum};
-use orlog::{autodetect, input, output, parse as orlog_parse, Solver, SolverLog};
+use miplog::{autodetect, input, output, parse as miplog_parse, Solver, SolverLog};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "orlog",
+    name = "miplog",
     version,
     about = "Parse MIP/LP solver log files into a unified, serde-serializable schema.",
     long_about = None,
@@ -23,7 +23,7 @@ struct Cli {
     input: PathBuf,
 
     /// Write to file instead of stdout. Format inferred from extension:
-    /// `.olog`/`.json.gz` → gzipped JSON, `.json` → JSON, else → orlog-text.
+    /// `.mlog`/`.json.gz` → gzipped JSON, `.json` → JSON, else → miplog-text.
     #[arg(short, long)]
     output: Option<PathBuf>,
 
@@ -46,13 +46,13 @@ struct Cli {
 enum OutputFormat {
     /// Short, human-readable summary (default for stdout).
     Summary,
-    /// The documented `orlog-text` v1 format. Full fidelity, round-trippable.
+    /// The documented `miplog-text` v1 format. Full fidelity, round-trippable.
     Text,
     /// Compact JSON on a single line.
     Json,
     /// Indented JSON.
     JsonPretty,
-    /// Gzipped compact JSON (the `.olog` format).
+    /// Gzipped compact JSON (the `.mlog` format).
     JsonGz,
 }
 
@@ -90,7 +90,7 @@ fn main() -> ExitCode {
     match run(cli) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("orlog: {e}");
+            eprintln!("miplog: {e}");
             ExitCode::FAILURE
         }
     }
@@ -107,7 +107,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let log: SolverLog = match cli.solver {
-        Some(s) => orlog_parse(&text, s.into())?,
+        Some(s) => miplog_parse(&text, s.into())?,
         None => autodetect(&text)?,
     };
 
@@ -155,13 +155,13 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn infer_format(out: Option<&Path>) -> OutputFormat {
-    // Stdout default = summary (what humans want when they type `orlog run.log`).
+    // Stdout default = summary (what humans want when they type `miplog run.log`).
     // Extension-bearing -o paths default to their natural format.
     let Some(p) = out else {
         return OutputFormat::Summary;
     };
     let name = p.file_name().and_then(|s| s.to_str()).unwrap_or("");
-    if name.ends_with(".olog") || name.ends_with(".json.gz") {
+    if name.ends_with(".mlog") || name.ends_with(".json.gz") {
         OutputFormat::JsonGz
     } else if name.ends_with(".json") {
         OutputFormat::Json

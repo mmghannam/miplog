@@ -1,7 +1,7 @@
-//! `orlog` — parse MIP/LP solver logs into a unified, serde-serializable schema.
+//! `miplog` — parse MIP/LP solver logs into a unified, serde-serializable schema.
 //!
 //! ```no_run
-//! use orlog::{parse, Solver};
+//! use miplog::{parse, Solver};
 //! let text = std::fs::read_to_string("run.log").unwrap();
 //! let log = parse(&text, Solver::Gurobi).unwrap();
 //! println!("{}", serde_json::to_string_pretty(&log).unwrap());

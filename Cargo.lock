@@ -319,6 +319,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "miplog"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "flate2",
+ "insta",
+ "nom",
+ "regex",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -339,20 +353,6 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
-
-[[package]]
-name = "orlog"
-version = "0.1.0"
-dependencies = [
- "clap",
- "flate2",
- "insta",
- "nom",
- "regex",
- "serde",
- "serde_json",
- "thiserror",
-]
 
 [[package]]
 name = "prettyplease"
