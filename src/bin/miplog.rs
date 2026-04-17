@@ -1,7 +1,7 @@
 //! `miplog` — command-line front-end for the [`miplog`] crate.
 //!
 //! Reads a solver log, emits the parsed result in one of three formats.
-//! Output format is inferred from `--output`'s extension (`.mlog`/`.json.gz`
+//! Output format is inferred from `--output`'s extension (`.json.gz`/`.json.gz`
 //! = gzipped JSON, `.json` = JSON, anything else or stdout = miplog-text).
 //! Override with `--format`.
 
@@ -23,7 +23,7 @@ struct Cli {
     input: PathBuf,
 
     /// Write to file instead of stdout. Format inferred from extension:
-    /// `.mlog`/`.json.gz` → gzipped JSON, `.json` → JSON, else → miplog-text.
+    /// `.json.gz`/`.json.gz` → gzipped JSON, `.json` → JSON, else → miplog-text.
     #[arg(short, long)]
     output: Option<PathBuf>,
 
@@ -52,7 +52,7 @@ enum OutputFormat {
     Json,
     /// Indented JSON.
     JsonPretty,
-    /// Gzipped compact JSON (the `.mlog` format).
+    /// Gzipped compact JSON (the `.json.gz` format).
     JsonGz,
 }
 
@@ -161,7 +161,7 @@ fn infer_format(out: Option<&Path>) -> OutputFormat {
         return OutputFormat::Summary;
     };
     let name = p.file_name().and_then(|s| s.to_str()).unwrap_or("");
-    if name.ends_with(".mlog") || name.ends_with(".json.gz") {
+    if name.ends_with(".json.gz") {
         OutputFormat::JsonGz
     } else if name.ends_with(".json") {
         OutputFormat::Json

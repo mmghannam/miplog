@@ -508,7 +508,7 @@ fn generated_roundtrip() {
                 Err(_) => continue,
             };
             let stem = path.file_stem().unwrap().to_string_lossy();
-            let gz = tmp.join(format!("{stem}.mlog"));
+            let gz = tmp.join(format!("{stem}.json.gz"));
             miplog::output::write_json_gz(&gz, &log).unwrap();
             let back = miplog::output::read_json(&gz).unwrap();
             assert_eq!(back.solver, log.solver, "{stem}: solver mismatch");

@@ -32,7 +32,7 @@ pub fn read_json(path: impl AsRef<Path>) -> std::io::Result<SolverLog> {
     let path = path.as_ref();
     let f = File::open(path)?;
     let reader: Box<dyn Read> = match path.extension().and_then(|s| s.to_str()) {
-        Some("gz" | "mlog") => Box::new(GzDecoder::new(f)),
+        Some("gz") => Box::new(GzDecoder::new(f)),
         _ => Box::new(BufReader::new(f)),
     };
     serde_json::from_reader(reader).map_err(io_err)

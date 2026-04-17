@@ -7,7 +7,7 @@ different format — different column names for the same concepts, different
 phrases for the same termination status, different units. `miplog` reads those
 logs and gives you back one consistent Rust structure.
 
-The unified on-disk form is called **`.mlog`** (gzipped JSON of a `SolverLog`).
+Parsed logs are stored as gzipped JSON (`.json.gz`).
 
 ## Status
 
@@ -22,12 +22,12 @@ cargo install miplog
 
 miplog run.log                       # print miplog-text v1 to stdout
 miplog run.log --format json | jq    # pipe JSON into other tools
-miplog run.log -o run.mlog           # archive as gzipped JSON (extension-inferred)
+miplog run.log -o run.json.gz        # archive as gzipped JSON (extension-inferred)
 miplog run.log --no-progress         # skip the B&B progress table
 cat run.log | miplog -               # stdin works
 ```
 
-Output format is inferred from `-o`'s extension: `.mlog` / `.json.gz` → gzipped
+Output format is inferred from `-o`'s extension: `.json.gz` → gzipped
 JSON, `.json` → JSON, anything else → miplog-text.
 
 ## Quickstart (library)
@@ -39,7 +39,7 @@ let text = input::read_file("run.log.gz")?;   // plain or gzipped, auto-detect
 let log = autodetect(&text)?;                 // Solver picked from content
 
 println!("{log}");                            // unified human summary
-output::write_json_gz("run.mlog", &log)?;     // archival storage
+output::write_json_gz("run.json.gz", &log)?;  // archival storage
 # Ok::<(), Box<dyn std::error::Error>>(())
 ```
 
@@ -93,7 +93,7 @@ The core type is `SolverLog`:
   doesn't fit the common vocabulary; each entry is `{ name, value }` where
   `value` is freeform JSON. Skipped by the text format; use JSON for full fidelity.
 - `parser: ParserInfo { version, git_hash }` — captures which build of
-  `miplog` produced the parse, so persisted `.mlog` files stay reproducible
+  `miplog` produced the parse, so persisted `.json.gz` files stay reproducible
   across parser changes
 
 Every field except `solver` and `parser` is `Option<_>` or otherwise skippable.
@@ -131,17 +131,15 @@ to `NodeEvent::Heuristic` / `BranchSolution`; unknown markers end up as
   that you feed to `autodetect`.
 - **Roadmap**: folder walking, zip archives, tar.gz streams.
 
-## Output / storage — the `.mlog` format
+## Output / storage
 
-`.mlog` is gzipped JSON of a `SolverLog`. That's it — we deliberately kept it
-as serde-friendly JSON rather than a binary format so it's human-inspectable
-(`zcat run.mlog | jq`) while still compressing well via the columnar progress
-layout.
+Parsed logs are gzipped JSON — human-inspectable (`zcat run.json.gz | jq`)
+and compressing well via the columnar progress layout.
 
 - `output::write_json(path, log)` — compact single-line JSON
 - `output::write_json_pretty(path, log)` — indented
-- `output::write_json_gz(path, log)` — gzip-compressed `.mlog` (recommended)
-- `output::read_json(path)` — auto-detects `.gz` / `.mlog`
+- `output::write_json_gz(path, log)` — gzip-compressed (recommended)
+- `output::read_json(path)` — auto-detects `.gz`
 
 Binary formats (`postcard`, `bincode`, `ciborium`) aren't pulled in by default;
 because everything is `serde`-derived they're a one-line addition behind a

@@ -45,7 +45,7 @@ reads it back. A round-trip test (`display_roundtrips`) keeps the two honest.
 | `parser`   | `version=<str> git=<hash\|->`                                | yes      |
 
 > **`other_data`** (`Vec<NamedValue>` in the Rust schema) is intentionally
-> **not** serialized by the text format. Use JSON (`.mlog`) for full fidelity;
+> **not** serialized by the text format. Use JSON (`.json.gz`) for full fidelity;
 > the text format is a human summary + machine-parseable contract for the
 > Core + Extended tiers only.
 
