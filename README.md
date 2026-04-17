@@ -165,20 +165,24 @@ Be defensive — partial or truncated logs should return a best-effort
 
 Schema philosophy: if the new solver has a concept that maps cleanly onto the
 common vocabulary, populate that field. If it's genuinely solver-specific,
-stash it in `extras: Value`. If two or more solvers share a solver-specific
+stash it in `other_data`. If two or more solvers share a solver-specific
 concept, that's the moment to promote it to the common schema.
 
 ## Testing
 
-Unit tests live inline. Integration tests walk a log directory pointed to by
-`$SOLVERLOG_SAMPLES` — the logs themselves are **never committed**
-(third-party license status is unclear). Example:
+Unit tests live inline. `cargo test` runs against committed fixture logs in
+`tests/fixtures/logs/` — one log per solver per scenario (optimal, time-limit,
+node-limit, infeasible, LP-only, concatenated). No setup required.
+
+For broader integration testing against real-world logs, point
+`$SOLVERLOG_SAMPLES` at a directory of solver/instance logs:
 
 ```bash
 SOLVERLOG_SAMPLES=/path/to/your/logs cargo test
 ```
 
-Without the variable, integration tests skip silently.
+Those tests skip silently when the variable is unset. The fixture logs are
+regenerated via `python3 tests/generate_logs.py` (requires the solvers locally).
 
 ## License
 
