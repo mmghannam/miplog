@@ -120,8 +120,7 @@ pub struct SolverLog {
     /// `"scip.root_node"`) let downstream tooling pattern-match without
     /// promising cross-solver compatibility.
     ///
-    /// Text format (`Display` / `from_text`) skips this field — use JSON for
-    /// full fidelity.
+    /// The `Display` summary skips this field — use JSON for full fidelity.
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub other_data: Vec<NamedValue>,
 }
@@ -240,9 +239,7 @@ pub enum NodeEvent {
     Other(String),
 }
 
-// `Display` is implemented in `text.rs` and emits the `miplog-text` v1 format
-// documented in `FORMAT.md`. Keeping it colocated with the parser keeps the
-// serialization/deserialization pair honest.
+// `Display` is implemented in `text.rs` and emits the human-readable summary.
 
 impl SolverLog {
     /// Empty log for a given solver — parsers start here and fill fields in.

@@ -112,7 +112,7 @@ Committing them:
 
 - Makes `cargo test` runnable without the solver install dance.
 - Makes parser regressions visible in diffs (a log that got parsed differently
-  after a refactor stands out because the rendered `miplog-text` will change).
+  after a refactor stands out in the diff).
 - Pins the exact solver versions exercised by the test suite; regenerating
   replaces these with whatever versions happen to be installed.
 

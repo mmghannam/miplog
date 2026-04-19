@@ -463,42 +463,6 @@ fn at_least_one_solver_log_exists() {
     eprintln!("Found {count} solver log(s) in {LOGS_DIR}");
 }
 
-/// Round-trip every generated log through Display -> from_text.  Validates that
-/// the documented `miplog-text` v1 format is idempotent for real parser output.
-#[test]
-fn text_format_roundtrip_all_generated() {
-    let dir = Path::new(LOGS_DIR);
-    if !dir.exists() {
-        return;
-    }
-    let mut n = 0;
-    for entry in std::fs::read_dir(dir).unwrap().flatten() {
-        let path = entry.path();
-        if path.extension().map(|x| x == "log").unwrap_or(false) {
-            let text = std::fs::read_to_string(&path).unwrap();
-            let log = match autodetect(&text) {
-                Ok(l) => l,
-                Err(_) => continue,
-            };
-            let rendered = format!("{log:#}");
-            // Parse back.
-            let back = miplog::from_text(&rendered)
-                .unwrap_or_else(|e| panic!("from_text({:?}): {e}", path.file_name()));
-            // Idempotent: re-rendering should match byte-for-byte.
-            let rendered2 = format!("{back:#}");
-            assert_eq!(
-                rendered,
-                rendered2,
-                "non-idempotent round trip for {:?}",
-                path.file_name()
-            );
-            n += 1;
-        }
-    }
-    assert!(n > 0, "no generated logs found to round-trip");
-    eprintln!("round-tripped {n} generated logs through Display/from_text");
-}
-
 /// Round-trip: parse → write JSON.gz → read back → compare.
 #[test]
 fn generated_roundtrip() {

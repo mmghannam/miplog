@@ -17,7 +17,6 @@ pub mod text;
 mod python;
 
 pub use schema::*;
-pub use text::{from_text, TextError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParseError {

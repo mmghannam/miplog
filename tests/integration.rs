@@ -224,50 +224,6 @@ fn roundtrip_and_size_comparison() {
     }
 }
 
-/// Round-trip every SOLVERLOG_SAMPLES log through Display → from_text → Display.
-/// Enforces that the documented miplog-text v1 format is idempotent across all
-/// real-world parser outputs.
-#[test]
-fn text_format_roundtrip_all_samples() {
-    let Some(base) = samples_dir() else { return };
-    let mut total = 0usize;
-    let mut failures = 0usize;
-    for solver_dir in ["gurobi", "xpress"] {
-        let dir = base.join(solver_dir);
-        if !dir.is_dir() {
-            continue;
-        }
-        for entry in std::fs::read_dir(&dir).unwrap().flatten() {
-            let path = entry.path();
-            let n = path.file_name().unwrap().to_string_lossy().into_owned();
-            if !(n.ends_with(".log") || n.ends_with(".log.gz")) {
-                continue;
-            }
-            let Ok(text) = input::read_file(&path) else {
-                continue;
-            };
-            let Ok(log) = autodetect(&text) else { continue };
-            total += 1;
-            let rendered = format!("{log:#}");
-            match miplog::from_text(&rendered) {
-                Ok(back) => {
-                    let rendered2 = format!("{back:#}");
-                    if rendered != rendered2 {
-                        failures += 1;
-                        eprintln!("NON-IDEMPOTENT: {solver_dir}/{n}");
-                    }
-                }
-                Err(e) => {
-                    failures += 1;
-                    eprintln!("PARSE-FAIL: {solver_dir}/{n}: {e}");
-                }
-            }
-        }
-    }
-    eprintln!("text-format round-trip: {}/{} ok", total - failures, total);
-    assert_eq!(failures, 0, "{failures} round-trip failures");
-}
-
 /// Display smoke-test: pretty-print survives for real logs.
 #[test]
 fn display_renders() {

@@ -1,9 +1,8 @@
 //! `miplog` — command-line front-end for the [`miplog`] crate.
 //!
-//! Reads a solver log, emits the parsed result in one of three formats.
-//! Output format is inferred from `--output`'s extension (`.json.gz`/`.json.gz`
-//! = gzipped JSON, `.json` = JSON, anything else or stdout = miplog-text).
-//! Override with `--format`.
+//! Reads a solver log, emits the parsed result as a human summary or JSON.
+//! Output format is inferred from `--output`'s extension (`.json.gz` → gzipped
+//! JSON, `.json` → JSON, else → summary). Override with `--format`.
 
 use clap::{Parser, ValueEnum};
 use miplog::{autodetect, input, output, parse as miplog_parse, Solver, SolverLog};
@@ -23,7 +22,7 @@ struct Cli {
     input: PathBuf,
 
     /// Write to file instead of stdout. Format inferred from extension:
-    /// `.json.gz`/`.json.gz` → gzipped JSON, `.json` → JSON, else → miplog-text.
+    /// `.json.gz` → gzipped JSON, `.json` → JSON, else → summary.
     #[arg(short, long)]
     output: Option<PathBuf>,
 
@@ -46,8 +45,6 @@ struct Cli {
 enum OutputFormat {
     /// Short, human-readable summary (default for stdout).
     Summary,
-    /// The documented `miplog-text` v1 format. Full fidelity, round-trippable.
-    Text,
     /// Compact JSON on a single line.
     Json,
     /// Indented JSON.
@@ -129,7 +126,6 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         (Some(path), OutputFormat::JsonGz) => output::write_json_gz(&path, &log)?,
         (Some(path), OutputFormat::Json) => output::write_json(&path, &log)?,
         (Some(path), OutputFormat::JsonPretty) => output::write_json_pretty(&path, &log)?,
-        (Some(path), OutputFormat::Text) => std::fs::write(&path, format!("{log:#}\n"))?,
         (Some(path), OutputFormat::Summary) => std::fs::write(&path, summary_str())?,
         (None, OutputFormat::JsonGz) => {
             return Err(
@@ -143,10 +139,6 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         (None, OutputFormat::JsonPretty) => {
             serde_json::to_writer_pretty(io::stdout().lock(), &log)?;
             println!();
-        }
-        (None, OutputFormat::Text) => {
-            let mut out = io::stdout().lock();
-            writeln!(out, "{log:#}")?;
         }
         (None, OutputFormat::Summary) => {
             let mut out = io::stdout().lock();
@@ -168,8 +160,6 @@ fn infer_format(out: Option<&Path>) -> OutputFormat {
     } else if name.ends_with(".json") {
         OutputFormat::Json
     } else {
-        // Unknown extension going to disk: default to the round-trippable
-        // full text format, not the lossy summary.
-        OutputFormat::Text
+        OutputFormat::Summary
     }
 }
