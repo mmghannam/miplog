@@ -1,30 +1,41 @@
 # miplog
 
-A command-line tool to parse MIP/LP solver log files into a unified, machine-readable format.
+Parse MIP/LP solver log files into a unified, machine-readable format.
 
 Every solver writes its log differently — different column names, different ways
 to say "optimal", different units. `miplog` reads any supported solver's log
-and gives you back the same JSON shape, so you can analyze runs across solvers
+and gives you back the same shape, so you can analyze runs across solvers
 without writing one parser per format.
 
 **Supported solvers:** SCIP 10–11, Gurobi 11–13, Xpress 9, HiGHS 1.12–14,
 CPLEX 12.7–12.8, CBC 2.9, COPT 8.0, OptVerse 2.0, Mosek 11.0.
 
-## Install
-
-**Python** (recommended for most users):
+## Python
 
 ```bash
 pip install miplog
 ```
 
-**Rust / CLI** (installs the `miplog` binary on your `$PATH`):
+```python
+import miplog
+
+log = miplog.parse_file("run.log.gz")   # plain or gzipped, solver auto-detected
+print(log["solver"], log["termination"]["status"])
+print(f"obj = {log['bounds']['primal']}, gap = {log['bounds']['gap']}")
+
+# B&B progress is stored columnar — drop straight into pandas/numpy
+import pandas as pd
+df = pd.DataFrame(log["progress"])
+```
+
+Available functions: `parse_file(path, solver=None)`, `parse_text(text)`,
+`split_concatenated(text)` for Mittelmann-style bundled runs.
+
+## Command line
 
 ```bash
 cargo install miplog
 ```
-
-## Use it from the command line
 
 ```bash
 miplog run.log                    # human-readable summary
@@ -45,24 +56,7 @@ presolve: 133→107 rows, 201→183 cols
 convergence: ██▄▄▄▄▂▂▂▂▂▂▂▂▁▁▁▁▁▁
 ```
 
-## Use it from Python
-
-```python
-import miplog
-
-log = miplog.parse_file("run.log.gz")   # plain or gzipped, solver auto-detected
-print(log["solver"], log["termination"]["status"])
-print(f"obj = {log['bounds']['primal']}, gap = {log['bounds']['gap']}")
-
-# B&B progress is stored columnar — drop straight into pandas/numpy
-import pandas as pd
-df = pd.DataFrame(log["progress"])
-```
-
-Available functions: `parse_file(path, solver=None)`, `parse_text(text)`,
-`split_concatenated(text)` for Mittelmann-style bundled runs.
-
-## Use it from Rust
+## Rust
 
 ```rust
 use miplog::{autodetect, input};
