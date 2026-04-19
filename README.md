@@ -33,6 +33,8 @@ Available functions: `parse_file(path, solver=None)`, `parse_text(text)`,
 
 ## Command line
 
+Requires the Rust toolchain ([install via rustup.rs](https://rustup.rs/)):
+
 ```bash
 cargo install miplog
 ```
