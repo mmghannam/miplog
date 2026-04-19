@@ -46,17 +46,37 @@ miplog run.log -o run.json.gz     # compressed archive (extension-inferred)
 cat run.log | miplog -            # stdin works too
 ```
 
-Sample summary output:
+Sample output (a SCIP run hitting a time limit on `glass4`):
 
 ```
 solver: scip 11.0.0
-problem: p0201
-status: optimal in 0.55s
-obj: 7615
-sols: 13
-presolve: 133→107 rows, 201→183 cols
-convergence: ██▄▄▄▄▂▂▂▂▂▂▂▂▁▁▁▁▁▁
+problem: glass4
+status: time-limit in 2.00s
+primal: 4350038500
+dual: 800004879.356464
+gap: 443.75%
+sols: 2
+presolve: 396→393 rows, 322→317 cols
+convergence: ████████████████████
+
+       time     nodes         primal           dual     gap  event
+       0.00         1              -     8.000024e8       -
+       0.00         1     4.450042e9     8.000024e8  456.2%  H
+    … same for 4 more rows …
+       0.00         1     4.450042e9     8.000031e8  456.2%
+       0.10         1     4.450042e9     8.000033e8  456.2%
+       0.10         1     4.450042e9     8.000044e8  456.2%
+       0.10         1     4.450042e9     8.000046e8  456.2%
+    … same for 5 more rows …
+       0.60         1     4.450042e9     8.000049e8  456.2%
+       0.90         1     4.350038e9     8.000049e8  443.8%  H
+    … same for 3 more rows …
+       1.70         1     4.350038e9     8.000049e8  443.8%
 ```
+
+Identical-looking rows are elided. Incumbent updates (`H` for heuristic,
+`*` for branch-found solution) are always kept. Pass `--no-progress` to
+suppress the table entirely.
 
 ## Rust
 
