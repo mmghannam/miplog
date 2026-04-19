@@ -12,15 +12,17 @@ CPLEX 12.7–12.8, CBC 2.9, COPT 8.0, OptVerse 2.0, Mosek 11.0.
 
 ## Install
 
-`miplog` is currently distributed as a Rust crate. You need the Rust toolchain
-([rustup.rs](https://rustup.rs/)) installed once, then:
+**Python** (recommended for most users):
+
+```bash
+pip install miplog
+```
+
+**Rust / CLI** (installs the `miplog` binary on your `$PATH`):
 
 ```bash
 cargo install miplog
 ```
-
-This puts a single self-contained `miplog` binary on your `$PATH`. Pre-built
-binaries and `pip install` are on the roadmap.
 
 ## Use it from the command line
 
@@ -45,29 +47,20 @@ convergence: ██▄▄▄▄▂▂▂▂▂▂▂▂▁▁▁▁▁▁
 
 ## Use it from Python
 
-Pipe the JSON output into your existing pipeline — no Python bindings needed:
-
 ```python
-import json, subprocess
+import miplog
 
-result = subprocess.run(
-    ["miplog", "run.log", "--format", "json"],
-    capture_output=True, text=True, check=True,
-)
-log = json.loads(result.stdout)
-
+log = miplog.parse_file("run.log.gz")   # plain or gzipped, solver auto-detected
 print(log["solver"], log["termination"]["status"])
 print(f"obj = {log['bounds']['primal']}, gap = {log['bounds']['gap']}")
 
-# B&B progress is stored columnar, so you can drop straight into pandas/numpy
+# B&B progress is stored columnar — drop straight into pandas/numpy
 import pandas as pd
 df = pd.DataFrame(log["progress"])
 ```
 
-## Use it from C / C++
-
-Same pattern: invoke `miplog` as a subprocess, read JSON from stdout.
-The schema is documented in the [API docs](https://docs.rs/miplog).
+Available functions: `parse_file(path, solver=None)`, `parse_text(text)`,
+`split_concatenated(text)` for Mittelmann-style bundled runs.
 
 ## Use it from Rust
 

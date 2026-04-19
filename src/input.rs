@@ -28,7 +28,7 @@ pub fn read_file(path: impl AsRef<Path>) -> io::Result<String> {
 }
 
 /// A single entry in a concatenated log — one instance's output.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ConcatEntry {
     /// Instance identifier from the run script (e.g. "modified/p_30n20b8.mps.gz").
     pub instance: String,

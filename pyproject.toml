@@ -1,0 +1,30 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "miplog"
+version = "0.1.0"
+description = "Parse MIP/LP solver log files (Gurobi, Xpress, SCIP, HiGHS, COPT, …) into a unified, serde-serializable schema."
+readme = "README.md"
+license = { text = "MIT OR Apache-2.0" }
+authors = [{ name = "Mohammed Ghannam", email = "mohammad.m.ghannam@gmail.com" }]
+requires-python = ">=3.8"
+keywords = ["mip", "optimization", "solver", "parser", "log"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Intended Audience :: Science/Research",
+]
+
+[project.urls]
+Repository = "https://github.com/mmghannam/miplog"
+Documentation = "https://docs.rs/miplog"
+
+[tool.maturin]
+features = ["python"]
+module-name = "miplog"

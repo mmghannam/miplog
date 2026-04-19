@@ -13,6 +13,9 @@ pub mod schema;
 pub mod solvers;
 pub mod text;
 
+#[cfg(feature = "python")]
+mod python;
+
 pub use schema::*;
 pub use text::{from_text, TextError};
 

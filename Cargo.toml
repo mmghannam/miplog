@@ -13,6 +13,15 @@ exclude = [
     ".github/",
 ]
 
+[lib]
+# `rlib` keeps the crate usable from other Rust code.
+# `cdylib` lets maturin build a Python extension from the same source.
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Enable when building via maturin; not needed for `cargo build`/`cargo install`.
+python = ["dep:pyo3", "dep:pythonize"]
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -20,6 +29,8 @@ regex = "1"
 thiserror = "2"
 flate2 = "1"
 clap = { version = "4", features = ["derive"] }
+pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
+pythonize = { version = "0.22", optional = true }
 
 [[bin]]
 name = "miplog"
