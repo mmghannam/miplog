@@ -244,7 +244,7 @@ fn write_summary_table(f: &mut fmt::Formatter<'_>, t: &ProgressTable) -> fmt::Re
     writeln!(
         f,
         "    {:>7}  {:>8}  {:>13}  {:>13}  {:>6}  event",
-        "time", "nodes", "primal", "dual", "gap",
+        "time", "nodes", "dual", "primal", "gap",
     )?;
     let mut prev: Option<usize> = None;
     for i in keep {
@@ -260,8 +260,8 @@ fn write_summary_table(f: &mut fmt::Formatter<'_>, t: &ProgressTable) -> fmt::Re
             "    {:>7.2}  {:>8}  {:>13}  {:>13}  {:>6}  {}",
             t.time_seconds[i],
             fmt_opt_u(t.nodes_explored[i]),
-            fmt_sci(t.primal[i]),
             fmt_sci(t.dual[i]),
+            fmt_sci(t.primal[i]),
             t.gap[i]
                 .map(|g| format!("{:.1}%", g * 100.0))
                 .unwrap_or_else(|| "-".into()),
