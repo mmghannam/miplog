@@ -5,8 +5,6 @@
 //! helpers that are format-agnostic.
 
 use crate::schema::NodeEvent;
-#[cfg(test)]
-use crate::schema::NodeSnapshot;
 
 /// Best-effort parse of a Gurobi-style time token ("0s", "12.3s", "5m", "2h").
 /// Returns seconds, or `None` if the token doesn't match.
@@ -42,21 +40,6 @@ pub(crate) fn parse_gap(tok: &str) -> Option<f64> {
     }
     let s = t.strip_suffix('%').unwrap_or(t).trim();
     s.parse::<f64>().ok().map(|v| v / 100.0)
-}
-
-/// Smoke-test helper for per-solver parsers.
-#[cfg(test)]
-pub(crate) fn assert_monotonic_time(rows: &[NodeSnapshot]) {
-    let mut prev = -1.0f64;
-    for r in rows {
-        assert!(
-            r.time_seconds >= prev - 1e-6,
-            "progress rows not time-monotonic: {} < {}",
-            r.time_seconds,
-            prev
-        );
-        prev = r.time_seconds;
-    }
 }
 
 /// Infer a [`NodeEvent`] from a single-char Gurobi/Xpress/COPT marker.

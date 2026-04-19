@@ -19,7 +19,6 @@ serde_json = "1"
 regex = "1"
 thiserror = "2"
 flate2 = "1"
-nom = "7"
 clap = { version = "4", features = ["derive"] }
 
 [[bin]]

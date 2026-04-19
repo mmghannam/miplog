@@ -8,7 +8,7 @@ fn main() {
         .and_then(|o| if o.status.success() { Some(o) } else { None })
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_default();
-    println!("cargo:rustc-env=ORLOG_GIT_HASH={hash}");
+    println!("cargo:rustc-env=MIPLOG_GIT_HASH={hash}");
     println!("cargo:rerun-if-changed=.git/HEAD");
     println!("cargo:rerun-if-changed=.git/refs/heads");
 }

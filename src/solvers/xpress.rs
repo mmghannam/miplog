@@ -231,7 +231,7 @@ fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
             obj.insert(name, serde_json::Value::Object(group));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 /// Parse the "Symmetric problem" block:
@@ -242,7 +242,7 @@ fn parse_symmetry(text: &str) -> Option<serde_json::Value> {
     let hdr = Regex::new(r"(?m)^Symmetric problem:").unwrap();
     let m = hdr.find(text)?;
     let body: String = std::iter::once(&text[m.start()..m.end()])
-        .chain(text[m.end()..].lines().skip(1).take(3).map(|l| &l[..]))
+        .chain(text[m.end()..].lines().skip(1).take(3))
         .collect::<Vec<_>>()
         .join(" ");
     let mut obj = serde_json::Map::new();
@@ -258,7 +258,7 @@ fn parse_symmetry(text: &str) -> Option<serde_json::Value> {
             obj.insert(key.into(), parse_f64_json(&c[1]));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 /// "Minimizing MILP p0201 using up to 14 threads and up to 24GB memory"
@@ -291,7 +291,7 @@ fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
         );
         arr.push(serde_json::Value::Object(o));
     }
-    (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
+    (!arr.is_empty()).then_some(serde_json::Value::Array(arr))
 }
 
 /// "Work / work units per second : 0.32 / 2.45"
@@ -354,7 +354,7 @@ fn parse_lp_violations(text: &str) -> Option<serde_json::Value> {
             obj.insert(k.into(), parse_f64_json(&c[1]));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_f64_json(s: &str) -> serde_json::Value {
@@ -462,9 +462,7 @@ fn parse_bb_row(line: &str) -> Option<NodeSnapshot> {
         }
         _ => return None,
     }
-    if snap.nodes_explored.is_none() {
-        return None;
-    }
+    snap.nodes_explored?;
     snap.event = event;
     Some(snap)
 }
@@ -472,6 +470,7 @@ fn parse_bb_row(line: &str) -> Option<NodeSnapshot> {
 /// Root cutting rows. Two shapes:
 ///   Standard:  "  1  K   7995.0  7265.2  2  15  0  9.13%  24  0"   (10 tok)
 ///   Incumbent: "P        7865.0  7265.2  3                 7.63%   0  0"   (8 tok)
+#[allow(clippy::field_reassign_with_default)]
 fn parse_root_cutting_row(line: &str) -> Option<NodeSnapshot> {
     let first = line.chars().next()?;
     let incumbent = matches!(first, 'P');

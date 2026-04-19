@@ -225,9 +225,7 @@ fn parse_row(line: &str) -> Option<NodeSnapshot> {
     }
     snap.event = event;
     // Sanity — if neither nodes nor time parsed, this isn't a progress row.
-    if snap.nodes_explored.is_none() {
-        return None;
-    }
+    snap.nodes_explored?;
     Some(snap)
 }
 
@@ -414,7 +412,7 @@ fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
             obj.insert(name, serde_json::Value::Object(inner));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 /// "Variable types:" lines (Gurobi prints two — before and after presolve).
@@ -488,7 +486,7 @@ fn parse_cpu_info(text: &str) -> Option<serde_json::Value> {
             serde_json::Value::from(c[3].parse::<u64>().unwrap_or(0)),
         );
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 /// "Found heuristic solution: objective N" — pre-B&B incumbents. Captures in order.
@@ -502,7 +500,7 @@ fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
             }
         }
     }
-    (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
+    (!arr.is_empty()).then_some(serde_json::Value::Array(arr))
 }
 
 /// "Solution count 10: 7615 7865 8055 ... 8920" — top-K solutions in the pool.

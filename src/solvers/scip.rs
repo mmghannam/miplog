@@ -276,16 +276,16 @@ fn parse_row(line: &str) -> Option<NodeSnapshot> {
     let primal = parse_exp(cells[15]);
     let gap = parse_gap(cells[16]);
 
-    let mut snap = NodeSnapshot::default();
-    snap.time_seconds = time_seconds;
-    snap.nodes_explored = node;
-    snap.primal = primal;
-    snap.dual = dual;
-    snap.gap = gap;
-    snap.depth = depth;
-    snap.lp_iterations = lp_iter;
-    snap.event = event;
-    Some(snap)
+    Some(NodeSnapshot {
+        time_seconds,
+        nodes_explored: node,
+        primal,
+        dual,
+        gap,
+        depth,
+        lp_iterations: lp_iter,
+        event,
+    })
 }
 
 /// Split a cell like `"p 0.0s"` or `"  0.1s"` or `"* 0.3s"` into an optional
@@ -537,6 +537,9 @@ fn parse_root_node_block(text: &str) -> Option<serde_json::Value> {
     let hdr = R.get_or_init(|| Regex::new(r"(?m)^Root Node\s*:").unwrap());
     let m = hdr.find(text)?;
     let mut obj = serde_json::Map::new();
+    static ROW_RE: OnceLock<Regex> = OnceLock::new();
+    let row_re =
+        ROW_RE.get_or_init(|| Regex::new(r"^\s+([A-Za-z][A-Za-z ]+?)\s*:\s+(\S+)").unwrap());
     for line in text[m.end()..].lines().skip(1).take(10) {
         if line.trim().is_empty() {
             continue;
@@ -545,7 +548,6 @@ fn parse_root_node_block(text: &str) -> Option<serde_json::Value> {
         if !c0.is_whitespace() {
             break;
         }
-        let row_re = Regex::new(r"^\s+([A-Za-z][A-Za-z ]+?)\s*:\s+(\S+)").unwrap();
         if let Some(c) = row_re.captures(line) {
             let k = c[1].trim().to_lowercase().replace(' ', "_");
             obj.insert(k, parse_json_scalar(&c[2]));
@@ -563,6 +565,9 @@ fn parse_tree_block(text: &str) -> Option<serde_json::Value> {
     let hdr = R.get_or_init(|| Regex::new(r"(?m)^B&B Tree\s*:").unwrap());
     let m = hdr.find(text)?;
     let mut obj = serde_json::Map::new();
+    static ROW_RE: OnceLock<Regex> = OnceLock::new();
+    let row_re =
+        ROW_RE.get_or_init(|| Regex::new(r"^\s+([A-Za-z][A-Za-z. ]+?)\s*:\s+(\S.*)$").unwrap());
     for line in text[m.end()..].lines().skip(1).take(20) {
         if line.trim().is_empty() {
             continue;
@@ -572,7 +577,6 @@ fn parse_tree_block(text: &str) -> Option<serde_json::Value> {
             break;
         }
         // Format: "  name    :   value [extra]"
-        let row_re = Regex::new(r"^\s+([A-Za-z][A-Za-z. ]+?)\s*:\s+(\S.*)$").unwrap();
         if let Some(c) = row_re.captures(line) {
             let k = c[1].trim().to_lowercase().replace([' ', '.'], "_");
             let raw = c[2].trim();

@@ -197,16 +197,16 @@ fn parse_row(line: &str) -> Option<NodeSnapshot> {
         return None;
     }
 
-    let mut snap = NodeSnapshot::default();
-    snap.time_seconds = time;
-    snap.event = event;
-    snap.nodes_explored = toks[offset + 1].replace(',', "").parse().ok();
-    // toks[offset+3] = It/Node — skip
-    snap.dual = parse_or_dash_inf(toks[offset + 4]);
-    snap.primal = parse_or_dash_inf(toks[offset + 5]);
-    snap.gap = parse_gap(toks[offset + 6]);
-
-    Some(snap)
+    // toks[offset+3] = It/Node — skip.
+    Some(NodeSnapshot {
+        time_seconds: time,
+        event,
+        nodes_explored: toks[offset + 1].replace(',', "").parse().ok(),
+        dual: parse_or_dash_inf(toks[offset + 4]),
+        primal: parse_or_dash_inf(toks[offset + 5]),
+        gap: parse_gap(toks[offset + 6]),
+        ..Default::default()
+    })
 }
 
 fn parse_or_dash_inf(tok: &str) -> Option<f64> {

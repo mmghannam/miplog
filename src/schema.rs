@@ -79,7 +79,7 @@ impl ParserInfo {
     pub fn current() -> Self {
         Self {
             version: env!("CARGO_PKG_VERSION").to_string(),
-            git_hash: env!("ORLOG_GIT_HASH").to_string(),
+            git_hash: env!("MIPLOG_GIT_HASH").to_string(),
         }
     }
 }

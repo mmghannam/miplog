@@ -184,7 +184,7 @@ fn parse_machine(text: &str) -> Option<serde_json::Value> {
         obj.insert("logical_cores".into(), parse_f64_json(&c[2]));
         obj.insert("instruction_set".into(), serde_json::Value::String(c[3].to_string()));
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_run_config(text: &str) -> Option<serde_json::Value> {
@@ -209,13 +209,16 @@ fn parse_variable_types(text: &str) -> (Option<serde_json::Value>, Option<serde_
     let mut before = None;
     // Before: immediately after "The original problem has:" block — look for
     // a line like "    201 binaries" (standalone counts).
-    let orig_hdr = Regex::new(r"(?m)^The original problem has:").unwrap();
+    static ORIG_HDR: OnceLock<Regex> = OnceLock::new();
+    static BEFORE_LINE: OnceLock<Regex> = OnceLock::new();
+    static AFTER_HDR: OnceLock<Regex> = OnceLock::new();
+    static AFTER_LINE: OnceLock<Regex> = OnceLock::new();
+    let orig_hdr = ORIG_HDR.get_or_init(|| Regex::new(r"(?m)^The original problem has:").unwrap());
+    let before_line = BEFORE_LINE
+        .get_or_init(|| Regex::new(r"^\s+(\d+)\s+(binaries|integers|continuous)").unwrap());
     if let Some(m) = orig_hdr.find(text) {
         for line in text[m.end()..].lines().take(6) {
-            if let Some(c) = Regex::new(r"^\s+(\d+)\s+(binaries|integers|continuous)")
-                .unwrap()
-                .captures(line)
-            {
+            if let Some(c) = before_line.captures(line) {
                 let mut obj = serde_json::Map::new();
                 obj.insert(c[2].to_string(), parse_f64_json(&c[1]));
                 before = Some(serde_json::Value::Object(obj));
@@ -223,14 +226,16 @@ fn parse_variable_types(text: &str) -> (Option<serde_json::Value>, Option<serde_
             }
         }
     }
-    let after_hdr = Regex::new(r"(?m)^The presolved problem has:").unwrap();
+    let after_hdr =
+        AFTER_HDR.get_or_init(|| Regex::new(r"(?m)^The presolved problem has:").unwrap());
+    let after_line =
+        AFTER_LINE.get_or_init(|| Regex::new(r"(\d+)\s+(binaries|integers|continuous)").unwrap());
     let mut after = None;
     if let Some(m) = after_hdr.find(text) {
         for line in text[m.end()..].lines().take(6) {
             let mut obj = serde_json::Map::new();
-            let re = Regex::new(r"(\d+)\s+(binaries|integers|continuous)").unwrap();
             let mut found = false;
-            for c in re.captures_iter(line) {
+            for c in after_line.captures_iter(line) {
                 obj.insert(c[2].to_string(), parse_f64_json(&c[1]));
                 found = true;
             }
@@ -255,7 +260,7 @@ fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
         inner.insert("max".into(), parse_f64_json(c[3].trim()));
         obj.insert(name, serde_json::Value::Object(inner));
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_violations(text: &str) -> Option<serde_json::Value> {
@@ -284,7 +289,7 @@ fn parse_violations(text: &str) -> Option<serde_json::Value> {
             obj.insert(name, serde_json::Value::Object(inner2));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_f64_json(s: &str) -> serde_json::Value {
@@ -452,16 +457,16 @@ fn parse_row(line: &str) -> Option<NodeSnapshot> {
     }
 
     let time = parse_time_token(toks[toks.len() - 1])?;
-    let mut snap = NodeSnapshot::default();
-    snap.time_seconds = time;
-    snap.event = event;
-    snap.nodes_explored = toks[0].replace(',', "").parse().ok();
     // toks[2] = LPit/n, toks[3] = IntInf — skip
-    snap.dual = parse_or_dash_inf(toks[4]);
-    snap.primal = parse_or_dash_inf(toks[5]);
-    snap.gap = parse_gap(toks[6]);
-
-    Some(snap)
+    Some(NodeSnapshot {
+        time_seconds: time,
+        event,
+        nodes_explored: toks[0].replace(',', "").parse().ok(),
+        dual: parse_or_dash_inf(toks[4]),
+        primal: parse_or_dash_inf(toks[5]),
+        gap: parse_gap(toks[6]),
+        ..Default::default()
+    })
 }
 
 fn parse_or_dash_inf(tok: &str) -> Option<f64> {

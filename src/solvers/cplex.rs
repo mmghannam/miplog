@@ -226,7 +226,7 @@ fn parse_search_config(text: &str) -> Option<serde_json::Value> {
         );
         obj.insert("threads".into(), parse_f64_json(&c[2]));
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 /// "Reduced MIP has 183 binaries, 3 generals, 0 SOSs, and 0 indicators."
@@ -272,7 +272,7 @@ fn parse_presolve_details(text: &str) -> Option<serde_json::Value> {
     {
         obj.insert("modified_coefficients".into(), parse_f64_json(&c[1]));
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_probing(text: &str) -> Option<serde_json::Value> {
@@ -290,7 +290,7 @@ fn parse_probing(text: &str) -> Option<serde_json::Value> {
     {
         obj.insert("constraints_sense_changed".into(), parse_f64_json(&c[1]));
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_clique_table(text: &str) -> Option<serde_json::Value> {
@@ -311,7 +311,7 @@ fn parse_heuristic_solutions(text: &str) -> Option<serde_json::Value> {
         o.insert("time_seconds".into(), parse_f64_json(&c[2]));
         arr.push(serde_json::Value::Object(o));
     }
-    (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
+    (!arr.is_empty()).then_some(serde_json::Value::Array(arr))
 }
 
 /// CPLEX's deterministic ticks — a workload counter that's hardware-independent.
@@ -340,7 +340,7 @@ fn parse_timing_breakdown(text: &str) -> Option<serde_json::Value> {
     {
         obj.insert("parallel_bc_time".into(), parse_f64_json(&c[1]));
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_f64_json(s: &str) -> serde_json::Value {
@@ -463,6 +463,7 @@ fn parse_progress(text: &str) -> ProgressTable {
     out
 }
 
+#[allow(clippy::field_reassign_with_default)]
 fn parse_row(line: &str, current_time: f64) -> Option<NodeSnapshot> {
     let marker = line.chars().next()?;
     let (event, body) = if marker == '*' {

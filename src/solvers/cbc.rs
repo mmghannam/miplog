@@ -162,7 +162,7 @@ fn parse_cut_details(text: &str) -> Option<serde_json::Value> {
         o.insert("time_seconds".into(), parse_f64_json_cbc(&c[5]));
         arr.push(serde_json::Value::Object(o));
     }
-    (!arr.is_empty()).then(|| serde_json::Value::Array(arr))
+    (!arr.is_empty()).then_some(serde_json::Value::Array(arr))
 }
 
 /// "Cbc0032I Strong branching done 1270 times (27431 iterations), fathomed 10 nodes and fixed 24 variables"
@@ -300,20 +300,22 @@ fn parse_progress(text: &str) -> ProgressTable {
 
     for line in text.lines() {
         if let Some(c) = re_cbc0010().captures(line) {
-            let mut snap = NodeSnapshot::default();
-            snap.nodes_explored = c[1].replace(',', "").parse().ok();
-            snap.primal = parse_obj(&c[3]);
-            snap.dual = c[4].parse().ok();
-            snap.time_seconds = c[5].parse().unwrap_or(0.0);
-            out.push(snap);
+            out.push(NodeSnapshot {
+                nodes_explored: c[1].replace(',', "").parse().ok(),
+                primal: parse_obj(&c[3]),
+                dual: c[4].parse().ok(),
+                time_seconds: c[5].parse().unwrap_or(0.0),
+                ..Default::default()
+            });
         } else if let Some(c) = re_cbc0004().captures(line) {
-            let mut snap = NodeSnapshot::default();
-            snap.primal = c[1].parse().ok();
-            snap.lp_iterations = c[2].replace(',', "").parse().ok();
-            snap.nodes_explored = c[3].replace(',', "").parse().ok();
-            snap.time_seconds = c[4].parse().unwrap_or(0.0);
-            snap.event = Some(NodeEvent::Heuristic);
-            out.push(snap);
+            out.push(NodeSnapshot {
+                primal: c[1].parse().ok(),
+                lp_iterations: c[2].replace(',', "").parse().ok(),
+                nodes_explored: c[3].replace(',', "").parse().ok(),
+                time_seconds: c[4].parse().unwrap_or(0.0),
+                event: Some(NodeEvent::Heuristic),
+                ..Default::default()
+            });
         }
     }
     out

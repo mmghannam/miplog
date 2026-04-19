@@ -191,7 +191,7 @@ fn parse_coefficient_ranges(text: &str) -> Option<serde_json::Value> {
             obj.insert(name, serde_json::Value::Object(inner));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 /// Parse the variable-type breakdown after presolve:
@@ -245,7 +245,7 @@ fn parse_solution_quality(text: &str) -> Option<serde_json::Value> {
             obj.insert(name, parse_f64_or_str(&c[1]));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 /// Parse the LP-iteration breakdown under the "LP iterations" total:
@@ -272,7 +272,7 @@ fn parse_lp_iter_breakdown(text: &str) -> Option<serde_json::Value> {
             obj.insert(name, parse_json_u64(&c[1]));
         }
     }
-    (!obj.is_empty()).then(|| serde_json::Value::Object(obj))
+    (!obj.is_empty()).then_some(serde_json::Value::Object(obj))
 }
 
 fn parse_json_u64(s: &str) -> serde_json::Value {
@@ -404,23 +404,19 @@ fn parse_row(line: &str) -> Option<NodeSnapshot> {
         return None;
     }
 
-    let mut snap = NodeSnapshot::default();
-    snap.time_seconds = time;
-    snap.event = event;
-
-    // Proc = nodes processed, InQueue = open nodes
-    snap.nodes_explored = toks[offset].parse().ok();
-    // Leaves = offset+2, Expl% = offset+3 (skip)
-
-    // BestBound, BestSol, Gap
-    snap.dual = parse_or_dash_or_inf(toks[offset + 4]);
-    snap.primal = parse_or_dash_or_inf(toks[offset + 5]);
-    snap.gap = parse_gap(toks[offset + 6]);
-
-    // LpIters = n-2
-    snap.lp_iterations = toks[n - 2].replace(',', "").parse().ok();
-
-    Some(snap)
+    // Proc = nodes processed, InQueue = open nodes.
+    // Leaves = offset+2, Expl% = offset+3 (skip).
+    // BestBound, BestSol, Gap at offset+4..+6. LpIters = n-2.
+    Some(NodeSnapshot {
+        time_seconds: time,
+        event,
+        nodes_explored: toks[offset].parse().ok(),
+        dual: parse_or_dash_or_inf(toks[offset + 4]),
+        primal: parse_or_dash_or_inf(toks[offset + 5]),
+        gap: parse_gap(toks[offset + 6]),
+        lp_iterations: toks[n - 2].replace(',', "").parse().ok(),
+        ..Default::default()
+    })
 }
 
 fn parse_or_dash_or_inf(tok: &str) -> Option<f64> {

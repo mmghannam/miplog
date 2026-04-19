@@ -317,7 +317,7 @@ fn summary_status_word(s: Status) -> &'static str {
 fn fmt_sci(v: Option<f64>) -> String {
     match v {
         None => "-".into(),
-        Some(v) if v == 0.0 => "0".into(),
+        Some(0.0) => "0".into(),
         Some(v) => format!("{v:.6e}"),
     }
 }
@@ -542,15 +542,14 @@ pub fn from_text(input: &str) -> Result<SolverLog, TextError> {
     let mut saw_solver = false;
     let mut parsing_progress = false;
 
-    while let Some((i, line_raw)) = lines.next() {
+    for (i, line_raw) in lines {
         let lineno = i + 1;
         let line = line_raw.trim_end_matches('\r');
         if line.trim().is_empty() {
             continue;
         }
         // Indented progress row or comment.
-        if line.starts_with("  ") {
-            let body = &line[2..];
+        if let Some(body) = line.strip_prefix("  ") {
             if body.trim_start().starts_with('#') {
                 continue;
             }
